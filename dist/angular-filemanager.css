@@ -1,3 +1,262 @@
+@-webkit-keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  };
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  };
+}
+
+@-webkit-keyframes fadeInDown {
+  0% {
+    opacity: 0;
+    -webkit-transform: translate3d(0, -100%, 0);
+    transform: translate3d(0, -100%, 0);
+  }
+
+  100% {
+    opacity: 1;
+    -webkit-transform: none;
+    transform: none;
+  };
+}
+
+@keyframes fadeInDown {
+  0% {
+    opacity: 0;
+    -webkit-transform: translate3d(0, -100%, 0);
+    transform: translate3d(0, -100%, 0);
+  }
+
+  100% {
+    opacity: 1;
+    -webkit-transform: none;
+    transform: none;
+  };
+}
+
+@keyframes rotate {
+  100% {
+    transform: rotate(360deg);
+  };
+}
+
+@-webkit-keyframes rotate {
+  100% {
+    -webkit-transform: rotate(360deg);
+  };
+}
+
+@keyframes colors {
+  0% {
+    stroke: #4285F4;
+  }
+
+  25% {
+    stroke: #DE3E35;
+  }
+
+  50% {
+    stroke: #F7C223;
+  }
+
+  75% {
+    stroke: #1B9A59;
+  }
+
+  100% {
+    stroke: #4285F4;
+  };
+}
+
+@keyframes dash {
+  0% {
+    stroke-dasharray: 1,150;
+    stroke-dashoffset: 0;
+    stroke: red;
+  }
+
+  50% {
+    stroke-dasharray: 90,150;
+    stroke-dashoffset: -35;
+    stroke: yellow;
+  }
+
+  100% {
+    stroke-dasharray: 90,150;
+    stroke-dashoffset: -124;
+    stroke: green;
+  };
+}
+
+@-webkit-keyframes dash {
+  0% {
+    stroke-dasharray: 1,150;
+    stroke-dashoffset: 0;
+  }
+
+  50% {
+    stroke-dasharray: 90,150;
+    stroke-dashoffset: -35;
+  }
+
+  100% {
+    stroke-dasharray: 90,150;
+    stroke-dashoffset: -124;
+  };
+}
+
+.animated {
+  -webkit-animation-duration: .7s;
+  animation-duration: .7s;
+  -webkit-animation-fill-mode: both;
+  animation-fill-mode: both;
+}
+
+.modal.animated,
+.animated.fast {
+  -webkit-animation-duration: .2s;
+  animation-duration: .2s;
+}
+
+.animated.slow {
+  -webkit-animation-duration: 1.1s;
+  animation-duration: 1.1s;
+}
+
+.animated.fadeInDown {
+  -webkit-animation-name: fadeInDown;
+  animation-name: fadeInDown;
+}
+
+.animated.fadeIn {
+  -webkit-animation-name: fadeIn;
+  animation-name: fadeIn;
+}
+
+.spinner-container {
+  -webkit-animation: rotate 2s linear infinite;
+  animation: rotate 2s linear infinite;
+  z-index: 2;
+  width: 65px;
+  height: 65px;
+}
+
+.spinner-container .path {
+  stroke-dasharray: 1,150;
+  stroke-dashoffset: 0;
+  stroke: #2196F3;
+  stroke-linecap: round;
+  -webkit-animation: dash 1.5s ease-in-out infinite, colors 5.6s ease-in-out infinite;
+  animation: dash 1.5s ease-in-out infinite, colors 5.6s ease-in-out infinite;
+}
+.modal {
+  word-wrap: break-word;
+}
+
+.modal .label.error-msg {
+  display: block;
+  font-size: 12px;
+  margin-top: 5px;
+  padding: 0;
+  padding: 5px;
+  margin-top: 10px;
+  text-align: left;
+}
+
+.modal .label.error-msg > span {
+  white-space: pre-wrap;
+}
+
+.modal .breadcrumb {
+  margin: 0;
+  background: #93c308;
+  font-size: 16px;
+  max-height: inherit;
+  padding: 0 10px;
+  margin-bottom: 5px;
+}
+
+.modal-fullscreen .modal-dialog,
+.modal-fullscreen .modal-content {
+  bottom: 0;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.modal-fullscreen .modal-dialog {
+  margin: 0;
+  width: 100%;
+}
+
+.modal-fullscreen .modal-content {
+  border: none;
+  -moz-border-radius: 0;
+  border-radius: 0;
+  -webkit-box-shadow: inherit;
+  -moz-box-shadow: inherit;
+  -o-box-shadow: inherit;
+  box-shadow: inherit;
+}
+
+.modal-fullscreen textarea.code {
+  min-height: 450px;
+}
+
+.modal img.preview {
+  max-width: 100%;
+  max-height: 640px;
+  border-radius: 3px;
+}
+
+.modal img.preview.loading {
+  width: 100%;
+  height: 1px;
+  opacity: 0;
+}
+
+
+.modal .modal-content {
+    border-radius: 10px 10px 4px 4px;
+}
+
+.modal .modal-header {
+    border-radius: 4px 4px 0 0;
+    background: #93c308;
+    padding: 1.3em;
+}
+
+.modal .modal-header .modal-title {
+    font-size: 20px;
+    line-height: 100%;
+    color: #D4E5F5;
+    margin: 0;
+}
+
+.modal .modal-header .close {
+    opacity: 1;
+    color: #D4E5F5;
+}
+
+.modal .modal-header .close.fullscreen {
+    font-size: 14px;
+    position: relative;
+    top: 4px;
+    margin-right: .8em;
+}
 body {
   font-size: 14px;
   height: 100vh;
