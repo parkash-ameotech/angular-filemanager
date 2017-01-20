@@ -1,4 +1,4 @@
-<div class="modal animated fadeIn" id="imagepreview">
+<div class="modal fadeIn" id="imagepreview">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -22,7 +22,7 @@
   </div>
 </div>
 
-<div class="modal animated fadeIn" id="remove">
+<div class="modal fadeIn" id="remove">
   <div class="modal-dialog">
     <div class="modal-content">
     <form ng-submit="remove()">
@@ -47,7 +47,7 @@
   </div>
 </div>
 
-<div class="modal animated fadeIn" id="move">
+<div class="modal fadeIn" id="move">
   <div class="modal-dialog">
     <div class="modal-content">
         <form ng-submit="move()">
@@ -72,7 +72,7 @@
 </div>
 
 
-<div class="modal animated fadeIn" id="rename">
+<div class="modal fadeIn" id="rename">
   <div class="modal-dialog">
     <div class="modal-content">
         <form ng-submit="rename()">
@@ -98,7 +98,7 @@
   </div>
 </div>
 
-<div class="modal animated fadeIn" id="copy">
+<div class="modal fadeIn" id="copy">
   <div class="modal-dialog">
     <div class="modal-content">
         <form ng-submit="copy()">
@@ -127,7 +127,7 @@
   </div>
 </div>
 
-<div class="modal animated fadeIn" id="compress">
+<div class="modal fadeIn" id="compress">
   <div class="modal-dialog">
     <div class="modal-content">
         <form ng-submit="compress()">
@@ -171,7 +171,7 @@
   </div>
 </div>
 
-<div class="modal animated fadeIn" id="extract" ng-init="singleSelection().emptyName()">
+<div class="modal fadeIn" id="extract" ng-init="singleSelection().emptyName()">
   <div class="modal-dialog">
     <div class="modal-content">
         <form ng-submit="extract()">
@@ -206,7 +206,7 @@
   </div>
 </div>
 
-<div class="modal animated fadeIn" id="edit" ng-class="{'modal-fullscreen': fullscreen}">
+<div class="modal fadeIn" id="edit" ng-class="{'modal-fullscreen': fullscreen}">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
         <form ng-submit="edit()">
@@ -236,7 +236,7 @@
   </div>
 </div>
 
-<div class="modal animated fadeIn" id="newfolder">
+<div class="modal fadeIn" id="newfolder">
   <div class="modal-dialog">
     <div class="modal-content">
         <form ng-submit="createFolder()">
@@ -261,7 +261,7 @@
   </div>
 </div>
 
-<div class="modal animated fadeIn" id="uploadfile">
+<div class="modal fadeIn" id="uploadfile">
   <div class="modal-dialog">
     <div class="modal-content">
         <form ng-submit="uploadFiles()">
@@ -311,7 +311,7 @@
   </div>
 </div>
 
-<div class="modal animated fadeIn" id="changepermissions">
+<div class="modal fadeIn" id="changepermissions">
   <div class="modal-dialog">
     <div class="modal-content">
         <form ng-submit="changePermissions()">
@@ -371,7 +371,7 @@
   </div>
 </div>
 
-<div class="modal animated fadeIn" id="selector" ng-controller="ModalFileManagerCtrl">
+<div class="modal fadeIn" id="selector" ng-controller="ModalFileManagerCtrl">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -419,7 +419,7 @@
 </script>
 
 <script type="text/ng-template" id="error-bar">
-  <div class="label label-danger error-msg pull-left animated fadeIn" ng-show="apiMiddleware.apiHandler.error">
+  <div class="label label-danger error-msg pull-left fadeIn" ng-show="apiMiddleware.apiHandler.error">
     <i class="glyphicon glyphicon-remove-circle"></i>
     <span>{{apiMiddleware.apiHandler.error}}</span>
   </div>
