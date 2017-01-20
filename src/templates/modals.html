@@ -264,6 +264,28 @@
 <div class="modal fadeIn" id="uploadfile">
   <div class="modal-dialog">
     <div class="modal-content">
+        <div class="well row">
+            <label for="emailAttach" class="btn crm-green"><i class=" fa fa-lg fa-paperclip"> Attach Files</i></label>
+            <input id="emailAttach" type="file" nv-file-select uploader="uploader" filters="checkfilecsv" class="sr-only custom-file-input">
+            <div class="list-group">
+                <a class="list-group-item row" href="" ng-repeat="item in attachfile">
+                    <div class="col-lg-10 col-md-10">
+                        <h5 class="list-group-item-heading">
+                            {{item.attach_file}}
+                        </h5>
+                        <p class="list-group-item-text">
+                            Size:{{item.size|number:2}} KB
+                        </p>
+                    </div>
+                    <div class="col-lg-2 col-md-2">
+                        <button type="button" class="btn btn-danger btn-xs" ng-click="removeAttachFile(item,actions)">
+                            <span class="glyphicon glyphicon-trash"></span> Remove
+                        </button>
+                    </div>
+
+                </a>
+            </div>
+        </div>
         <form ng-submit="uploadFiles()">
             <div class="modal-header">
               <button type="button" class="close" data-dismiss="modal">
