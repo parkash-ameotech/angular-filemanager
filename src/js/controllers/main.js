@@ -1,8 +1,8 @@
 (function(angular, $) {
     'use strict';
     angular.module('FileManagerApp').controller('FileManagerCtrl', [
-        '$scope', '$rootScope', '$window', '$translate', 'fileManagerConfig', 'item', 'fileNavigator', 'apiMiddleware',
-        function($scope, $rootScope, $window, $translate, fileManagerConfig, Item, FileNavigator, ApiMiddleware) {
+        '$scope', '$rootScope', '$window', '$translate', 'fileManagerConfig', 'item', 'fileNavigator', 'apiMiddleware','FileUploader',
+        function($scope, $rootScope, $window, $translate, fileManagerConfig, Item, FileNavigator, ApiMiddleware, FileUploader) {
 
         var $storage = $window.localStorage;
         $scope.config = fileManagerConfig;
@@ -355,6 +355,23 @@
         $scope.changeLanguage(getQueryParam('lang'));
         $scope.isWindows = getQueryParam('server') === 'Windows';
         $scope.fileNavigator.refresh();
+
+
+            var uploader = $scope.uploader = new FileUploader({
+                url: '/api/email/uploadattachfile',
+                autoUpload: true
+            });
+
+            uploader.onBeforeUploadItem = function (item) {
+                item.formData.push({name: item.file.name, size: item.file.size / 1024});
+
+            };
+
+            uploader.onCompleteItem = function (item, response) {
+                console.log(response);
+                //console.log($scope.actions);
+
+            }
 
     }]);
 })(angular, jQuery);
