@@ -160,6 +160,7 @@ textarea.code {
   padding: 10px 0;
   border: none;
   background: none;
+  color: #93c308;
 }
 
 .table-files .selected,
