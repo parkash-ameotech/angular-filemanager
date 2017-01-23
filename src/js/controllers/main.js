@@ -362,7 +362,7 @@
         $scope.fileNavigator.refresh();
 
             var uploader = $scope.uploader = new FileUploader({
-                url: '/api/email/uploadattachfile',
+                url: '/api/filemanager/uploadUrl',
                 autoUpload: true
             });
 
