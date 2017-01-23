@@ -1,6 +1,6 @@
 (function(window, angular, $) {
     'use strict';
-    angular.module('FileManagerApp', ['pascalprecht.translate', 'ngFileUpload']);
+    angular.module('FileManagerApp', ['pascalprecht.translate', 'ngFileUpload', 'angularFileUpload']);
 
     /**
      * jQuery inits
@@ -60,8 +60,11 @@
 (function(angular, $) {
     'use strict';
     angular.module('FileManagerApp').controller('FileManagerCtrl', [
-        '$scope', '$rootScope', '$window', '$translate', 'fileManagerConfig', 'item', 'fileNavigator', 'apiMiddleware','FileUploader',
-        function($scope, $rootScope, $window, $translate, fileManagerConfig, Item, FileNavigator, ApiMiddleware, FileUploader) {
+        '$scope', '$rootScope', '$window', '$translate', 'fileManagerConfig', 'item', 'fileNavigator', 'apiMiddleware',
+        'FileUploader',
+        function($scope, $rootScope, $window, $translate, fileManagerConfig, Item, FileNavigator, ApiMiddleware
+            ,FileUploader
+        ) {
 
         var $storage = $window.localStorage;
         $scope.config = fileManagerConfig;
@@ -388,6 +391,8 @@
         };
 
         $scope.uploadFiles = function() {
+            console.log($scope.uploadFileList);
+            console.log($scope.fileNavigator.currentPath);
             $scope.apiMiddleware.upload($scope.uploadFileList, $scope.fileNavigator.currentPath).then(function() {
                 $scope.fileNavigator.refresh();
                 $scope.uploadFileList = [];
@@ -414,7 +419,6 @@
         $scope.changeLanguage(getQueryParam('lang'));
         $scope.isWindows = getQueryParam('server') === 'Windows';
         $scope.fileNavigator.refresh();
-
 
             var uploader = $scope.uploader = new FileUploader({
                 url: '/api/email/uploadattachfile',
@@ -492,47 +496,6 @@
         };
 
     }]);
-})(angular);
-
-(function(angular) {
-    'use strict';
-    var app = angular.module('FileManagerApp');
-
-    app.directive('angularFilemanager', ['$parse', 'fileManagerConfig', function($parse, fileManagerConfig) {
-        return {
-            restrict: 'EA',
-            templateUrl: fileManagerConfig.tplPath + '/main.html'
-        };
-    }]);
-
-    app.directive('ngFile', ['$parse', function($parse) {
-        return {
-            restrict: 'A',
-            link: function(scope, element, attrs) {
-                var model = $parse(attrs.ngFile);
-                var modelSetter = model.assign;
-
-                element.bind('change', function() {
-                    scope.$apply(function() {
-                        modelSetter(scope, element[0].files);
-                    });
-                });
-            }
-        };
-    }]);
-
-    app.directive('ngRightClick', ['$parse', function($parse) {
-        return function(scope, element, attrs) {
-            var fn = $parse(attrs.ngRightClick);
-            element.bind('contextmenu', function(event) {
-                scope.$apply(function() {
-                    event.preventDefault();
-                    fn(scope, {$event: event});
-                });
-            });
-        };
-    }]);
-    
 })(angular);
 
 (function(angular) {
@@ -716,6 +679,47 @@
     'use strict';
     var app = angular.module('FileManagerApp');
 
+    app.directive('angularFilemanager', ['$parse', 'fileManagerConfig', function($parse, fileManagerConfig) {
+        return {
+            restrict: 'EA',
+            templateUrl: fileManagerConfig.tplPath + '/main.html'
+        };
+    }]);
+
+    app.directive('ngFile', ['$parse', function($parse) {
+        return {
+            restrict: 'A',
+            link: function(scope, element, attrs) {
+                var model = $parse(attrs.ngFile);
+                var modelSetter = model.assign;
+
+                element.bind('change', function() {
+                    scope.$apply(function() {
+                        modelSetter(scope, element[0].files);
+                    });
+                });
+            }
+        };
+    }]);
+
+    app.directive('ngRightClick', ['$parse', function($parse) {
+        return function(scope, element, attrs) {
+            var fn = $parse(attrs.ngRightClick);
+            element.bind('contextmenu', function(event) {
+                scope.$apply(function() {
+                    event.preventDefault();
+                    fn(scope, {$event: event});
+                });
+            });
+        };
+    }]);
+    
+})(angular);
+
+(function(angular) {
+    'use strict';
+    var app = angular.module('FileManagerApp');
+
     app.filter('strLimit', ['$filter', function($filter) {
         return function(input, limit, more) {
             if (input.length <= limit) {
@@ -759,6 +763,1338 @@
     }]);
 })(angular);
 
+/*
+ angular-file-upload v1.1.5
+ https://github.com/nervgh/angular-file-upload
+*/
+(function(angular, factory) {
+    if (typeof define === 'function' && define.amd) {
+        define('angular-file-upload', ['angular'], function(angular) {
+            return factory(angular);
+        });
+    } else {
+        return factory(angular);
+    }
+}(typeof angular === 'undefined' ? null : angular, function(angular) {
+
+var module = angular.module('angularFileUpload', []);
+
+'use strict';
+
+/**
+ * Classes
+ *
+ * FileUploader
+ * FileUploader.FileLikeObject
+ * FileUploader.FileItem
+ * FileUploader.FileDirective
+ * FileUploader.FileSelect
+ * FileUploader.FileDrop
+ * FileUploader.FileOver
+ */
+
+module
+
+
+    .value('fileUploaderOptions', {
+        url: '/',
+        alias: 'file',
+        headers: {},
+        queue: [],
+        progress: 0,
+        autoUpload: false,
+        removeAfterUpload: false,
+        method: 'POST',
+        filters: [],
+        formData: [],
+        queueLimit: Number.MAX_VALUE,
+        withCredentials: false
+    })
+
+
+    .factory('FileUploader', ['fileUploaderOptions', '$rootScope', '$http', '$window', '$compile',
+        function(fileUploaderOptions, $rootScope, $http, $window, $compile) {
+            /**
+             * Creates an instance of FileUploader
+             * @param {Object} [options]
+             * @constructor
+             */
+            function FileUploader(options) {
+                var settings = angular.copy(fileUploaderOptions);
+                angular.extend(this, settings, options, {
+                    isUploading: false,
+                    _nextIndex: 0,
+                    _failFilterIndex: -1,
+                    _directives: {select: [], drop: [], over: []}
+                });
+
+                // add default filters
+                this.filters.unshift({name: 'queueLimit', fn: this._queueLimitFilter});
+                this.filters.unshift({name: 'folder', fn: this._folderFilter});
+            }
+            /**********************
+             * PUBLIC
+             **********************/
+            /**
+             * Checks a support the html5 uploader
+             * @returns {Boolean}
+             * @readonly
+             */
+            FileUploader.prototype.isHTML5 = !!($window.File && $window.FormData);
+            /**
+             * Adds items to the queue
+             * @param {File|HTMLInputElement|Object|FileList|Array<Object>} files
+             * @param {Object} [options]
+             * @param {Array<Function>|String} filters
+             */
+            FileUploader.prototype.addToQueue = function(files, options, filters) {
+                var list = this.isArrayLikeObject(files) ? files: [files];
+                var arrayOfFilters = this._getFilters(filters);
+                var count = this.queue.length;
+                var addedFileItems = [];
+
+                angular.forEach(list, function(some /*{File|HTMLInputElement|Object}*/) {
+                    var temp = new FileUploader.FileLikeObject(some);
+
+                    if (this._isValidFile(temp, arrayOfFilters, options)) {
+                        var fileItem = new FileUploader.FileItem(this, some, options);
+                        addedFileItems.push(fileItem);
+                        this.queue.push(fileItem);
+                        this._onAfterAddingFile(fileItem);
+                    } else {
+                        var filter = this.filters[this._failFilterIndex];
+                        this._onWhenAddingFileFailed(temp, filter, options);
+                    }
+                }, this);
+
+                if(this.queue.length !== count) {
+                    this._onAfterAddingAll(addedFileItems);
+                    this.progress = this._getTotalProgress();
+                }
+
+                this._render();
+                if (this.autoUpload) this.uploadAll();
+            };
+            /**
+             * Remove items from the queue. Remove last: index = -1
+             * @param {FileItem|Number} value
+             */
+            FileUploader.prototype.removeFromQueue = function(value) {
+                var index = this.getIndexOfItem(value);
+                var item = this.queue[index];
+                if (item.isUploading) item.cancel();
+                this.queue.splice(index, 1);
+                item._destroy();
+                this.progress = this._getTotalProgress();
+            };
+            /**
+             * Clears the queue
+             */
+            FileUploader.prototype.clearQueue = function() {
+                while(this.queue.length) {
+                    this.queue[0].remove();
+                }
+                this.progress = 0;
+            };
+            /**
+             * Uploads a item from the queue
+             * @param {FileItem|Number} value
+             */
+            FileUploader.prototype.uploadItem = function(value) {
+                var index = this.getIndexOfItem(value);
+                var item = this.queue[index];
+                var transport = this.isHTML5 ? '_xhrTransport' : '_iframeTransport';
+
+                item._prepareToUploading();
+                if(this.isUploading) return;
+
+                this.isUploading = true;
+                this[transport](item);
+            };
+            /**
+             * Cancels uploading of item from the queue
+             * @param {FileItem|Number} value
+             */
+            FileUploader.prototype.cancelItem = function(value) {
+                var index = this.getIndexOfItem(value);
+                var item = this.queue[index];
+                var prop = this.isHTML5 ? '_xhr' : '_form';
+                if (item && item.isUploading) item[prop].abort();
+            };
+            /**
+             * Uploads all not uploaded items of queue
+             */
+            FileUploader.prototype.uploadAll = function() {
+                var items = this.getNotUploadedItems().filter(function(item) {
+                    return !item.isUploading;
+                });
+                if (!items.length) return;
+
+                angular.forEach(items, function(item) {
+                    item._prepareToUploading();
+                });
+                items[0].upload();
+            };
+            /**
+             * Cancels all uploads
+             */
+            FileUploader.prototype.cancelAll = function() {
+                var items = this.getNotUploadedItems();
+                angular.forEach(items, function(item) {
+                    item.cancel();
+                });
+            };
+            /**
+             * Returns "true" if value an instance of File
+             * @param {*} value
+             * @returns {Boolean}
+             * @private
+             */
+            FileUploader.prototype.isFile = function(value) {
+                var fn = $window.File;
+                return (fn && value instanceof fn);
+            };
+            /**
+             * Returns "true" if value an instance of FileLikeObject
+             * @param {*} value
+             * @returns {Boolean}
+             * @private
+             */
+            FileUploader.prototype.isFileLikeObject = function(value) {
+                return value instanceof FileUploader.FileLikeObject;
+            };
+            /**
+             * Returns "true" if value is array like object
+             * @param {*} value
+             * @returns {Boolean}
+             */
+            FileUploader.prototype.isArrayLikeObject = function(value) {
+                return (angular.isObject(value) && 'length' in value);
+            };
+            /**
+             * Returns a index of item from the queue
+             * @param {Item|Number} value
+             * @returns {Number}
+             */
+            FileUploader.prototype.getIndexOfItem = function(value) {
+                return angular.isNumber(value) ? value : this.queue.indexOf(value);
+            };
+            /**
+             * Returns not uploaded items
+             * @returns {Array}
+             */
+            FileUploader.prototype.getNotUploadedItems = function() {
+                return this.queue.filter(function(item) {
+                    return !item.isUploaded;
+                });
+            };
+            /**
+             * Returns items ready for upload
+             * @returns {Array}
+             */
+            FileUploader.prototype.getReadyItems = function() {
+                return this.queue
+                    .filter(function(item) {
+                        return (item.isReady && !item.isUploading);
+                    })
+                    .sort(function(item1, item2) {
+                        return item1.index - item2.index;
+                    });
+            };
+            /**
+             * Destroys instance of FileUploader
+             */
+            FileUploader.prototype.destroy = function() {
+                angular.forEach(this._directives, function(key) {
+                    angular.forEach(this._directives[key], function(object) {
+                        object.destroy();
+                    }, this);
+                }, this);
+            };
+            /**
+             * Callback
+             * @param {Array} fileItems
+             */
+            FileUploader.prototype.onAfterAddingAll = function(fileItems) {};
+            /**
+             * Callback
+             * @param {FileItem} fileItem
+             */
+            FileUploader.prototype.onAfterAddingFile = function(fileItem) {};
+            /**
+             * Callback
+             * @param {File|Object} item
+             * @param {Object} filter
+             * @param {Object} options
+             * @private
+             */
+            FileUploader.prototype.onWhenAddingFileFailed = function(item, filter, options) {};
+            /**
+             * Callback
+             * @param {FileItem} fileItem
+             */
+            FileUploader.prototype.onBeforeUploadItem = function(fileItem) {};
+            /**
+             * Callback
+             * @param {FileItem} fileItem
+             * @param {Number} progress
+             */
+            FileUploader.prototype.onProgressItem = function(fileItem, progress) {};
+            /**
+             * Callback
+             * @param {Number} progress
+             */
+            FileUploader.prototype.onProgressAll = function(progress) {};
+            /**
+             * Callback
+             * @param {FileItem} item
+             * @param {*} response
+             * @param {Number} status
+             * @param {Object} headers
+             */
+            FileUploader.prototype.onSuccessItem = function(item, response, status, headers) {};
+            /**
+             * Callback
+             * @param {FileItem} item
+             * @param {*} response
+             * @param {Number} status
+             * @param {Object} headers
+             */
+            FileUploader.prototype.onErrorItem = function(item, response, status, headers) {};
+            /**
+             * Callback
+             * @param {FileItem} item
+             * @param {*} response
+             * @param {Number} status
+             * @param {Object} headers
+             */
+            FileUploader.prototype.onCancelItem = function(item, response, status, headers) {};
+            /**
+             * Callback
+             * @param {FileItem} item
+             * @param {*} response
+             * @param {Number} status
+             * @param {Object} headers
+             */
+            FileUploader.prototype.onCompleteItem = function(item, response, status, headers) {};
+            /**
+             * Callback
+             */
+            FileUploader.prototype.onCompleteAll = function() {};
+            /**********************
+             * PRIVATE
+             **********************/
+            /**
+             * Returns the total progress
+             * @param {Number} [value]
+             * @returns {Number}
+             * @private
+             */
+            FileUploader.prototype._getTotalProgress = function(value) {
+                if(this.removeAfterUpload) return value || 0;
+
+                var notUploaded = this.getNotUploadedItems().length;
+                var uploaded = notUploaded ? this.queue.length - notUploaded : this.queue.length;
+                var ratio = 100 / this.queue.length;
+                var current = (value || 0) * ratio / 100;
+
+                return Math.round(uploaded * ratio + current);
+            };
+            /**
+             * Returns array of filters
+             * @param {Array<Function>|String} filters
+             * @returns {Array<Function>}
+             * @private
+             */
+            FileUploader.prototype._getFilters = function(filters) {
+                if (angular.isUndefined(filters)) return this.filters;
+                if (angular.isArray(filters)) return filters;
+                var names = filters.match(/[^\s,]+/g);
+                return this.filters.filter(function(filter) {
+                    return names.indexOf(filter.name) !== -1;
+                }, this);
+            };
+            /**
+             * Updates html
+             * @private
+             */
+            FileUploader.prototype._render = function() {
+                if (!$rootScope.$$phase) $rootScope.$apply();
+            };
+            /**
+             * Returns "true" if item is a file (not folder)
+             * @param {File|FileLikeObject} item
+             * @returns {Boolean}
+             * @private
+             */
+            FileUploader.prototype._folderFilter = function(item) {
+                return !!(item.size || item.type);
+            };
+            /**
+             * Returns "true" if the limit has not been reached
+             * @returns {Boolean}
+             * @private
+             */
+            FileUploader.prototype._queueLimitFilter = function() {
+                return this.queue.length < this.queueLimit;
+            };
+            /**
+             * Returns "true" if file pass all filters
+             * @param {File|Object} file
+             * @param {Array<Function>} filters
+             * @param {Object} options
+             * @returns {Boolean}
+             * @private
+             */
+            FileUploader.prototype._isValidFile = function(file, filters, options) {
+                this._failFilterIndex = -1;
+                return !filters.length ? true : filters.every(function(filter) {
+                    this._failFilterIndex++;
+                    return filter.fn.call(this, file, options);
+                }, this);
+            };
+            /**
+             * Checks whether upload successful
+             * @param {Number} status
+             * @returns {Boolean}
+             * @private
+             */
+            FileUploader.prototype._isSuccessCode = function(status) {
+                return (status >= 200 && status < 300) || status === 304;
+            };
+            /**
+             * Transforms the server response
+             * @param {*} response
+             * @param {Object} headers
+             * @returns {*}
+             * @private
+             */
+            FileUploader.prototype._transformResponse = function(response, headers) {
+                var headersGetter = this._headersGetter(headers);
+                angular.forEach($http.defaults.transformResponse, function(transformFn) {
+                    response = transformFn(response, headersGetter);
+                });
+                return response;
+            };
+            /**
+             * Parsed response headers
+             * @param headers
+             * @returns {Object}
+             * @see https://github.com/angular/angular.js/blob/master/src/ng/http.js
+             * @private
+             */
+            FileUploader.prototype._parseHeaders = function(headers) {
+                var parsed = {}, key, val, i;
+
+                if (!headers) return parsed;
+
+                angular.forEach(headers.split('\n'), function(line) {
+                    i = line.indexOf(':');
+                    key = line.slice(0, i).trim().toLowerCase();
+                    val = line.slice(i + 1).trim();
+
+                    if (key) {
+                        parsed[key] = parsed[key] ? parsed[key] + ', ' + val : val;
+                    }
+                });
+
+                return parsed;
+            };
+            /**
+             * Returns function that returns headers
+             * @param {Object} parsedHeaders
+             * @returns {Function}
+             * @private
+             */
+            FileUploader.prototype._headersGetter = function(parsedHeaders) {
+                return function(name) {
+                    if (name) {
+                        return parsedHeaders[name.toLowerCase()] || null;
+                    }
+                    return parsedHeaders;
+                };
+            };
+            /**
+             * The XMLHttpRequest transport
+             * @param {FileItem} item
+             * @private
+             */
+            FileUploader.prototype._xhrTransport = function(item) {
+                var xhr = item._xhr = new XMLHttpRequest();
+                var form = new FormData();
+                var that = this;
+
+                that._onBeforeUploadItem(item);
+
+                angular.forEach(item.formData, function(obj) {
+                    angular.forEach(obj, function(value, key) {
+                        form.append(key, value);
+                    });
+                });
+
+                form.append(item.alias, item._file, item.file.name);
+
+                xhr.upload.onprogress = function(event) {
+                    var progress = Math.round(event.lengthComputable ? event.loaded * 100 / event.total : 0);
+                    that._onProgressItem(item, progress);
+                };
+
+                xhr.onload = function() {
+                    var headers = that._parseHeaders(xhr.getAllResponseHeaders());
+                    var response = that._transformResponse(xhr.response, headers);
+                    var gist = that._isSuccessCode(xhr.status) ? 'Success' : 'Error';
+                    var method = '_on' + gist + 'Item';
+                    that[method](item, response, xhr.status, headers);
+                    that._onCompleteItem(item, response, xhr.status, headers);
+                };
+
+                xhr.onerror = function() {
+                    var headers = that._parseHeaders(xhr.getAllResponseHeaders());
+                    var response = that._transformResponse(xhr.response, headers);
+                    that._onErrorItem(item, response, xhr.status, headers);
+                    that._onCompleteItem(item, response, xhr.status, headers);
+                };
+
+                xhr.onabort = function() {
+                    var headers = that._parseHeaders(xhr.getAllResponseHeaders());
+                    var response = that._transformResponse(xhr.response, headers);
+                    that._onCancelItem(item, response, xhr.status, headers);
+                    that._onCompleteItem(item, response, xhr.status, headers);
+                };
+
+                xhr.open(item.method, item.url, true);
+
+                xhr.withCredentials = item.withCredentials;
+
+                angular.forEach(item.headers, function(value, name) {
+                    xhr.setRequestHeader(name, value);
+                });
+
+                xhr.send(form);
+                this._render();
+            };
+            /**
+             * The IFrame transport
+             * @param {FileItem} item
+             * @private
+             */
+            FileUploader.prototype._iframeTransport = function(item) {
+                var form = angular.element('<form style="display: none;" />');
+                var iframe = angular.element('<iframe name="iframeTransport' + Date.now() + '">');
+                var input = item._input;
+                var that = this;
+
+                if (item._form) item._form.replaceWith(input); // remove old form
+                item._form = form; // save link to new form
+
+                that._onBeforeUploadItem(item);
+
+                input.prop('name', item.alias);
+
+                angular.forEach(item.formData, function(obj) {
+                    angular.forEach(obj, function(value, key) {
+                        var element = angular.element('<input type="hidden" name="' + key + '" />');
+                        element.val(value);
+                        form.append(element);
+                    });
+                });
+
+                form.prop({
+                    action: item.url,
+                    method: 'POST',
+                    target: iframe.prop('name'),
+                    enctype: 'multipart/form-data',
+                    encoding: 'multipart/form-data' // old IE
+                });
+
+                iframe.bind('load', function() {
+                    try {
+                        // Fix for legacy IE browsers that loads internal error page
+                        // when failed WS response received. In consequence iframe
+                        // content access denied error is thrown becouse trying to
+                        // access cross domain page. When such thing occurs notifying
+                        // with empty response object. See more info at:
+                        // http://stackoverflow.com/questions/151362/access-is-denied-error-on-accessing-iframe-document-object
+                        // Note that if non standard 4xx or 5xx error code returned
+                        // from WS then response content can be accessed without error
+                        // but 'XHR' status becomes 200. In order to avoid confusion
+                        // returning response via same 'success' event handler.
+
+                        // fixed angular.contents() for iframes
+                        var html = iframe[0].contentDocument.body.innerHTML;
+                    } catch (e) {}
+
+                    var xhr = {response: html, status: 200, dummy: true};
+                    var headers = {};
+                    var response = that._transformResponse(xhr.response, headers);
+
+                    that._onSuccessItem(item, response, xhr.status, headers);
+                    that._onCompleteItem(item, response, xhr.status, headers);
+                });
+
+                form.abort = function() {
+                    var xhr = {status: 0, dummy: true};
+                    var headers = {};
+                    var response;
+
+                    iframe.unbind('load').prop('src', 'javascript:false;');
+                    form.replaceWith(input);
+
+                    that._onCancelItem(item, response, xhr.status, headers);
+                    that._onCompleteItem(item, response, xhr.status, headers);
+                };
+
+                input.after(form);
+                form.append(input).append(iframe);
+
+                form[0].submit();
+                this._render();
+            };
+            /**
+             * Inner callback
+             * @param {File|Object} item
+             * @param {Object} filter
+             * @param {Object} options
+             * @private
+             */
+            FileUploader.prototype._onWhenAddingFileFailed = function(item, filter, options) {
+                this.onWhenAddingFileFailed(item, filter, options);
+            };
+            /**
+             * Inner callback
+             * @param {FileItem} item
+             */
+            FileUploader.prototype._onAfterAddingFile = function(item) {
+                this.onAfterAddingFile(item);
+            };
+            /**
+             * Inner callback
+             * @param {Array<FileItem>} items
+             */
+            FileUploader.prototype._onAfterAddingAll = function(items) {
+                this.onAfterAddingAll(items);
+            };
+            /**
+             *  Inner callback
+             * @param {FileItem} item
+             * @private
+             */
+            FileUploader.prototype._onBeforeUploadItem = function(item) {
+                item._onBeforeUpload();
+                this.onBeforeUploadItem(item);
+            };
+            /**
+             * Inner callback
+             * @param {FileItem} item
+             * @param {Number} progress
+             * @private
+             */
+            FileUploader.prototype._onProgressItem = function(item, progress) {
+                var total = this._getTotalProgress(progress);
+                this.progress = total;
+                item._onProgress(progress);
+                this.onProgressItem(item, progress);
+                this.onProgressAll(total);
+                this._render();
+            };
+            /**
+             * Inner callback
+             * @param {FileItem} item
+             * @param {*} response
+             * @param {Number} status
+             * @param {Object} headers
+             * @private
+             */
+            FileUploader.prototype._onSuccessItem = function(item, response, status, headers) {
+                item._onSuccess(response, status, headers);
+                this.onSuccessItem(item, response, status, headers);
+            };
+            /**
+             * Inner callback
+             * @param {FileItem} item
+             * @param {*} response
+             * @param {Number} status
+             * @param {Object} headers
+             * @private
+             */
+            FileUploader.prototype._onErrorItem = function(item, response, status, headers) {
+                item._onError(response, status, headers);
+                this.onErrorItem(item, response, status, headers);
+            };
+            /**
+             * Inner callback
+             * @param {FileItem} item
+             * @param {*} response
+             * @param {Number} status
+             * @param {Object} headers
+             * @private
+             */
+            FileUploader.prototype._onCancelItem = function(item, response, status, headers) {
+                item._onCancel(response, status, headers);
+                this.onCancelItem(item, response, status, headers);
+            };
+            /**
+             * Inner callback
+             * @param {FileItem} item
+             * @param {*} response
+             * @param {Number} status
+             * @param {Object} headers
+             * @private
+             */
+            FileUploader.prototype._onCompleteItem = function(item, response, status, headers) {
+                item._onComplete(response, status, headers);
+                this.onCompleteItem(item, response, status, headers);
+
+                var nextItem = this.getReadyItems()[0];
+                this.isUploading = false;
+
+                if(angular.isDefined(nextItem)) {
+                    nextItem.upload();
+                    return;
+                }
+
+                this.onCompleteAll();
+                this.progress = this._getTotalProgress();
+                this._render();
+            };
+            /**********************
+             * STATIC
+             **********************/
+            /**
+             * @borrows FileUploader.prototype.isFile
+             */
+            FileUploader.isFile = FileUploader.prototype.isFile;
+            /**
+             * @borrows FileUploader.prototype.isFileLikeObject
+             */
+            FileUploader.isFileLikeObject = FileUploader.prototype.isFileLikeObject;
+            /**
+             * @borrows FileUploader.prototype.isArrayLikeObject
+             */
+            FileUploader.isArrayLikeObject = FileUploader.prototype.isArrayLikeObject;
+            /**
+             * @borrows FileUploader.prototype.isHTML5
+             */
+            FileUploader.isHTML5 = FileUploader.prototype.isHTML5;
+            /**
+             * Inherits a target (Class_1) by a source (Class_2)
+             * @param {Function} target
+             * @param {Function} source
+             */
+            FileUploader.inherit = function(target, source) {
+                target.prototype = Object.create(source.prototype);
+                target.prototype.constructor = target;
+                target.super_ = source;
+            };
+            FileUploader.FileLikeObject = FileLikeObject;
+            FileUploader.FileItem = FileItem;
+            FileUploader.FileDirective = FileDirective;
+            FileUploader.FileSelect = FileSelect;
+            FileUploader.FileDrop = FileDrop;
+            FileUploader.FileOver = FileOver;
+
+            // ---------------------------
+
+            /**
+             * Creates an instance of FileLikeObject
+             * @param {File|HTMLInputElement|Object} fileOrInput
+             * @constructor
+             */
+            function FileLikeObject(fileOrInput) {
+                var isInput = angular.isElement(fileOrInput);
+                var fakePathOrObject = isInput ? fileOrInput.value : fileOrInput;
+                var postfix = angular.isString(fakePathOrObject) ? 'FakePath' : 'Object';
+                var method = '_createFrom' + postfix;
+                this[method](fakePathOrObject);
+            }
+
+            /**
+             * Creates file like object from fake path string
+             * @param {String} path
+             * @private
+             */
+            FileLikeObject.prototype._createFromFakePath = function(path) {
+                this.lastModifiedDate = null;
+                this.size = null;
+                this.type = 'like/' + path.slice(path.lastIndexOf('.') + 1).toLowerCase();
+                this.name = path.slice(path.lastIndexOf('/') + path.lastIndexOf('\\') + 2);
+            };
+            /**
+             * Creates file like object from object
+             * @param {File|FileLikeObject} object
+             * @private
+             */
+            FileLikeObject.prototype._createFromObject = function(object) {
+                this.lastModifiedDate = angular.copy(object.lastModifiedDate);
+                this.size = object.size;
+                this.type = object.type;
+                this.name = object.name;
+            };
+
+            // ---------------------------
+
+            /**
+             * Creates an instance of FileItem
+             * @param {FileUploader} uploader
+             * @param {File|HTMLInputElement|Object} some
+             * @param {Object} options
+             * @constructor
+             */
+            function FileItem(uploader, some, options) {
+                var isInput = angular.isElement(some);
+                var input = isInput ? angular.element(some) : null;
+                var file = !isInput ? some : null;
+
+                angular.extend(this, {
+                    url: uploader.url,
+                    alias: uploader.alias,
+                    headers: angular.copy(uploader.headers),
+                    formData: angular.copy(uploader.formData),
+                    removeAfterUpload: uploader.removeAfterUpload,
+                    withCredentials: uploader.withCredentials,
+                    method: uploader.method
+                }, options, {
+                    uploader: uploader,
+                    file: new FileUploader.FileLikeObject(some),
+                    isReady: false,
+                    isUploading: false,
+                    isUploaded: false,
+                    isSuccess: false,
+                    isCancel: false,
+                    isError: false,
+                    progress: 0,
+                    index: null,
+                    _file: file,
+                    _input: input
+                });
+
+                if (input) this._replaceNode(input);
+            }
+            /**********************
+             * PUBLIC
+             **********************/
+            /**
+             * Uploads a FileItem
+             */
+            FileItem.prototype.upload = function() {
+                this.uploader.uploadItem(this);
+            };
+            /**
+             * Cancels uploading of FileItem
+             */
+            FileItem.prototype.cancel = function() {
+                this.uploader.cancelItem(this);
+            };
+            /**
+             * Removes a FileItem
+             */
+            FileItem.prototype.remove = function() {
+                this.uploader.removeFromQueue(this);
+            };
+            /**
+             * Callback
+             * @private
+             */
+            FileItem.prototype.onBeforeUpload = function() {};
+            /**
+             * Callback
+             * @param {Number} progress
+             * @private
+             */
+            FileItem.prototype.onProgress = function(progress) {};
+            /**
+             * Callback
+             * @param {*} response
+             * @param {Number} status
+             * @param {Object} headers
+             */
+            FileItem.prototype.onSuccess = function(response, status, headers) {};
+            /**
+             * Callback
+             * @param {*} response
+             * @param {Number} status
+             * @param {Object} headers
+             */
+            FileItem.prototype.onError = function(response, status, headers) {};
+            /**
+             * Callback
+             * @param {*} response
+             * @param {Number} status
+             * @param {Object} headers
+             */
+            FileItem.prototype.onCancel = function(response, status, headers) {};
+            /**
+             * Callback
+             * @param {*} response
+             * @param {Number} status
+             * @param {Object} headers
+             */
+            FileItem.prototype.onComplete = function(response, status, headers) {};
+            /**********************
+             * PRIVATE
+             **********************/
+            /**
+             * Inner callback
+             */
+            FileItem.prototype._onBeforeUpload = function() {
+                this.isReady = true;
+                this.isUploading = true;
+                this.isUploaded = false;
+                this.isSuccess = false;
+                this.isCancel = false;
+                this.isError = false;
+                this.progress = 0;
+                this.onBeforeUpload();
+            };
+            /**
+             * Inner callback
+             * @param {Number} progress
+             * @private
+             */
+            FileItem.prototype._onProgress = function(progress) {
+                this.progress = progress;
+                this.onProgress(progress);
+            };
+            /**
+             * Inner callback
+             * @param {*} response
+             * @param {Number} status
+             * @param {Object} headers
+             * @private
+             */
+            FileItem.prototype._onSuccess = function(response, status, headers) {
+                this.isReady = false;
+                this.isUploading = false;
+                this.isUploaded = true;
+                this.isSuccess = true;
+                this.isCancel = false;
+                this.isError = false;
+                this.progress = 100;
+                this.index = null;
+                this.onSuccess(response, status, headers);
+            };
+            /**
+             * Inner callback
+             * @param {*} response
+             * @param {Number} status
+             * @param {Object} headers
+             * @private
+             */
+            FileItem.prototype._onError = function(response, status, headers) {
+                this.isReady = false;
+                this.isUploading = false;
+                this.isUploaded = true;
+                this.isSuccess = false;
+                this.isCancel = false;
+                this.isError = true;
+                this.progress = 0;
+                this.index = null;
+                this.onError(response, status, headers);
+            };
+            /**
+             * Inner callback
+             * @param {*} response
+             * @param {Number} status
+             * @param {Object} headers
+             * @private
+             */
+            FileItem.prototype._onCancel = function(response, status, headers) {
+                this.isReady = false;
+                this.isUploading = false;
+                this.isUploaded = false;
+                this.isSuccess = false;
+                this.isCancel = true;
+                this.isError = false;
+                this.progress = 0;
+                this.index = null;
+                this.onCancel(response, status, headers);
+            };
+            /**
+             * Inner callback
+             * @param {*} response
+             * @param {Number} status
+             * @param {Object} headers
+             * @private
+             */
+            FileItem.prototype._onComplete = function(response, status, headers) {
+                this.onComplete(response, status, headers);
+                if (this.removeAfterUpload) this.remove();
+            };
+            /**
+             * Destroys a FileItem
+             */
+            FileItem.prototype._destroy = function() {
+                if (this._input) this._input.remove();
+                if (this._form) this._form.remove();
+                delete this._form;
+                delete this._input;
+            };
+            /**
+             * Prepares to uploading
+             * @private
+             */
+            FileItem.prototype._prepareToUploading = function() {
+                this.index = this.index || ++this.uploader._nextIndex;
+                this.isReady = true;
+            };
+            /**
+             * Replaces input element on his clone
+             * @param {JQLite|jQuery} input
+             * @private
+             */
+            FileItem.prototype._replaceNode = function(input) {
+                var clone = $compile(input.clone())(input.scope());
+                clone.prop('value', null); // FF fix
+                input.css('display', 'none');
+                input.after(clone); // remove jquery dependency
+            };
+
+            // ---------------------------
+
+            /**
+             * Creates instance of {FileDirective} object
+             * @param {Object} options
+             * @param {Object} options.uploader
+             * @param {HTMLElement} options.element
+             * @param {Object} options.events
+             * @param {String} options.prop
+             * @constructor
+             */
+            function FileDirective(options) {
+                angular.extend(this, options);
+                this.uploader._directives[this.prop].push(this);
+                this._saveLinks();
+                this.bind();
+            }
+            /**
+             * Map of events
+             * @type {Object}
+             */
+            FileDirective.prototype.events = {};
+            /**
+             * Binds events handles
+             */
+            FileDirective.prototype.bind = function() {
+                for(var key in this.events) {
+                    var prop = this.events[key];
+                    this.element.bind(key, this[prop]);
+                }
+            };
+            /**
+             * Unbinds events handles
+             */
+            FileDirective.prototype.unbind = function() {
+                for(var key in this.events) {
+                    this.element.unbind(key, this.events[key]);
+                }
+            };
+            /**
+             * Destroys directive
+             */
+            FileDirective.prototype.destroy = function() {
+                var index = this.uploader._directives[this.prop].indexOf(this);
+                this.uploader._directives[this.prop].splice(index, 1);
+                this.unbind();
+                // this.element = null;
+            };
+            /**
+             * Saves links to functions
+             * @private
+             */
+            FileDirective.prototype._saveLinks = function() {
+                for(var key in this.events) {
+                    var prop = this.events[key];
+                    this[prop] = this[prop].bind(this);
+                }
+            };
+
+            // ---------------------------
+
+            FileUploader.inherit(FileSelect, FileDirective);
+
+            /**
+             * Creates instance of {FileSelect} object
+             * @param {Object} options
+             * @constructor
+             */
+            function FileSelect(options) {
+                FileSelect.super_.apply(this, arguments);
+
+                if(!this.uploader.isHTML5) {
+                    this.element.removeAttr('multiple');
+                }
+                this.element.prop('value', null); // FF fix
+            }
+            /**
+             * Map of events
+             * @type {Object}
+             */
+            FileSelect.prototype.events = {
+                $destroy: 'destroy',
+                change: 'onChange'
+            };
+            /**
+             * Name of property inside uploader._directive object
+             * @type {String}
+             */
+            FileSelect.prototype.prop = 'select';
+            /**
+             * Returns options
+             * @return {Object|undefined}
+             */
+            FileSelect.prototype.getOptions = function() {};
+            /**
+             * Returns filters
+             * @return {Array<Function>|String|undefined}
+             */
+            FileSelect.prototype.getFilters = function() {};
+            /**
+             * If returns "true" then HTMLInputElement will be cleared
+             * @returns {Boolean}
+             */
+            FileSelect.prototype.isEmptyAfterSelection = function() {
+                return !!this.element.attr('multiple');
+            };
+            /**
+             * Event handler
+             */
+            FileSelect.prototype.onChange = function() {
+                var files = this.uploader.isHTML5 ? this.element[0].files : this.element[0];
+                var options = this.getOptions();
+                var filters = this.getFilters();
+
+                if (!this.uploader.isHTML5) this.destroy();
+                this.uploader.addToQueue(files, options, filters);
+                if (this.isEmptyAfterSelection()) this.element.prop('value', null);
+            };
+
+            // ---------------------------
+
+            FileUploader.inherit(FileDrop, FileDirective);
+
+            /**
+             * Creates instance of {FileDrop} object
+             * @param {Object} options
+             * @constructor
+             */
+            function FileDrop(options) {
+                FileDrop.super_.apply(this, arguments);
+            }
+            /**
+             * Map of events
+             * @type {Object}
+             */
+            FileDrop.prototype.events = {
+                $destroy: 'destroy',
+                drop: 'onDrop',
+                dragover: 'onDragOver',
+                dragleave: 'onDragLeave'
+            };
+            /**
+             * Name of property inside uploader._directive object
+             * @type {String}
+             */
+            FileDrop.prototype.prop = 'drop';
+            /**
+             * Returns options
+             * @return {Object|undefined}
+             */
+            FileDrop.prototype.getOptions = function() {};
+            /**
+             * Returns filters
+             * @return {Array<Function>|String|undefined}
+             */
+            FileDrop.prototype.getFilters = function() {};
+            /**
+             * Event handler
+             */
+            FileDrop.prototype.onDrop = function(event) {
+                var transfer = this._getTransfer(event);
+                if (!transfer) return;
+                var options = this.getOptions();
+                var filters = this.getFilters();
+                this._preventAndStop(event);
+                angular.forEach(this.uploader._directives.over, this._removeOverClass, this);
+                this.uploader.addToQueue(transfer.files, options, filters);
+            };
+            /**
+             * Event handler
+             */
+            FileDrop.prototype.onDragOver = function(event) {
+                var transfer = this._getTransfer(event);
+                if(!this._haveFiles(transfer.types)) return;
+                transfer.dropEffect = 'copy';
+                this._preventAndStop(event);
+                angular.forEach(this.uploader._directives.over, this._addOverClass, this);
+            };
+            /**
+             * Event handler
+             */
+            FileDrop.prototype.onDragLeave = function(event) {
+                if (event.currentTarget !== this.element[0]) return;
+                this._preventAndStop(event);
+                angular.forEach(this.uploader._directives.over, this._removeOverClass, this);
+            };
+            /**
+             * Helper
+             */
+            FileDrop.prototype._getTransfer = function(event) {
+                return event.dataTransfer ? event.dataTransfer : event.originalEvent.dataTransfer; // jQuery fix;
+            };
+            /**
+             * Helper
+             */
+            FileDrop.prototype._preventAndStop = function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+            };
+            /**
+             * Returns "true" if types contains files
+             * @param {Object} types
+             */
+            FileDrop.prototype._haveFiles = function(types) {
+                if (!types) return false;
+                if (types.indexOf) {
+                    return types.indexOf('Files') !== -1;
+                } else if(types.contains) {
+                    return types.contains('Files');
+                } else {
+                    return false;
+                }
+            };
+            /**
+             * Callback
+             */
+            FileDrop.prototype._addOverClass = function(item) {
+                item.addOverClass();
+            };
+            /**
+             * Callback
+             */
+            FileDrop.prototype._removeOverClass = function(item) {
+                item.removeOverClass();
+            };
+
+            // ---------------------------
+
+            FileUploader.inherit(FileOver, FileDirective);
+
+            /**
+             * Creates instance of {FileDrop} object
+             * @param {Object} options
+             * @constructor
+             */
+            function FileOver(options) {
+                FileOver.super_.apply(this, arguments);
+            }
+            /**
+             * Map of events
+             * @type {Object}
+             */
+            FileOver.prototype.events = {
+                $destroy: 'destroy'
+            };
+            /**
+             * Name of property inside uploader._directive object
+             * @type {String}
+             */
+            FileOver.prototype.prop = 'over';
+            /**
+             * Over class
+             * @type {string}
+             */
+            FileOver.prototype.overClass = 'nv-file-over';
+            /**
+             * Adds over class
+             */
+            FileOver.prototype.addOverClass = function() {
+                this.element.addClass(this.getOverClass());
+            };
+            /**
+             * Removes over class
+             */
+            FileOver.prototype.removeOverClass = function() {
+                this.element.removeClass(this.getOverClass());
+            };
+            /**
+             * Returns over class
+             * @returns {String}
+             */
+            FileOver.prototype.getOverClass = function() {
+                return this.overClass;
+            };
+
+            return FileUploader;
+        }])
+
+
+    .directive('nvFileSelect', ['$parse', 'FileUploader', function($parse, FileUploader) {
+        return {
+            link: function(scope, element, attributes) {
+                var uploader = scope.$eval(attributes.uploader);
+
+                if (!(uploader instanceof FileUploader)) {
+                    throw new TypeError('"Uploader" must be an instance of FileUploader');
+                }
+
+                var object = new FileUploader.FileSelect({
+                    uploader: uploader,
+                    element: element
+                });
+
+                object.getOptions = $parse(attributes.options).bind(object, scope);
+                object.getFilters = function() {return attributes.filters;};
+            }
+        };
+    }])
+
+
+    .directive('nvFileDrop', ['$parse', 'FileUploader', function($parse, FileUploader) {
+        return {
+            link: function(scope, element, attributes) {
+                var uploader = scope.$eval(attributes.uploader);
+
+                if (!(uploader instanceof FileUploader)) {
+                    throw new TypeError('"Uploader" must be an instance of FileUploader');
+                }
+
+                if (!uploader.isHTML5) return;
+
+                var object = new FileUploader.FileDrop({
+                    uploader: uploader,
+                    element: element
+                });
+
+                object.getOptions = $parse(attributes.options).bind(object, scope);
+                object.getFilters = function() {return attributes.filters;};
+            }
+        };
+    }])
+
+
+    .directive('nvFileOver', ['FileUploader', function(FileUploader) {
+        return {
+            link: function(scope, element, attributes) {
+                var uploader = scope.$eval(attributes.uploader);
+
+                if (!(uploader instanceof FileUploader)) {
+                    throw new TypeError('"Uploader" must be an instance of FileUploader');
+                }
+
+                var object = new FileUploader.FileOver({
+                    uploader: uploader,
+                    element: element
+                });
+
+                object.getOverClass = function() {
+                    return attributes.overClass || this.overClass;
+                };
+            }
+        };
+    }])
+
+    return module;
+}));
 (function(angular) {
     'use strict';
     angular.module('FileManagerApp').provider('fileManagerConfig', function() {
@@ -2884,7 +4220,7 @@ $templateCache.put("src/templates/main-icons.html","<div class=\"iconset noselec
 $templateCache.put("src/templates/main-table-modal.html","<table class=\"table table-condensed table-modal-condensed mb0\">\n    <thead>\n        <tr>\n            <th>\n                <a href=\"\" ng-click=\"order(\'model.name\')\">\n                    {{\"name\" | translate}}\n                    <span class=\"sortorder\" ng-show=\"predicate[1] === \'model.name\'\" ng-class=\"{reverse:reverse}\"></span>\n                </a>\n            </th>\n            <th class=\"text-right\"></th>\n        </tr>\n    </thead>\n    <tbody class=\"file-item\">\n        <tr ng-show=\"fileNavigator.requesting\">\n            <td colspan=\"2\">\n                <div ng-include=\"config.tplPath + \'/spinner.html\'\"></div>\n            </td>\n        </tr>\n        <tr ng-show=\"!fileNavigator.requesting && !fileNavigator.listHasFolders() && !fileNavigator.error\">\n            <td>\n                {{\"no_folders_in_folder\" | translate}}...\n            </td>\n            <td class=\"text-right\">\n                <button class=\"btn btn-sm btn-default\" ng-click=\"fileNavigator.upDir()\">{{\"go_back\" | translate}}</button>\n            </td>\n        </tr>\n        <tr ng-show=\"!fileNavigator.requesting && fileNavigator.error\">\n            <td colspan=\"2\">\n                {{ fileNavigator.error }}\n            </td>\n        </tr>\n        <tr ng-repeat=\"item in fileNavigator.fileList | orderBy:predicate:reverse\" ng-show=\"!fileNavigator.requesting && item.model.type === \'dir\'\" ng-if=\"!selectedFilesAreChildOfPath(item)\">\n            <td>\n                <a href=\"\" ng-click=\"fileNavigator.folderClick(item)\" title=\"{{item.model.name}} ({{item.model.size | humanReadableFileSize}})\">\n                    <i class=\"glyphicon glyphicon-folder-close\"></i>\n                    {{item.model.name | strLimit : 32}}\n                </a>\n            </td>\n            <td class=\"text-right\">\n                <button class=\"btn btn-sm btn-default\" ng-click=\"select(item)\">\n                    <i class=\"glyphicon glyphicon-hand-up\"></i> {{\"select_this\" | translate}}\n                </button>\n            </td>\n        </tr>\n    </tbody>\n</table>");
 $templateCache.put("src/templates/main-table.html","<table class=\"table mb0 table-files noselect\">\n    <thead>\n        <tr>\n            <th>\n                <a href=\"\" ng-click=\"order(\'model.name\')\">\n                    {{\"name\" | translate}}\n                    <span class=\"sortorder\" ng-show=\"predicate[1] === \'model.name\'\" ng-class=\"{reverse:reverse}\"></span>\n                </a>\n            </th>\n            <th class=\"hidden-xs\" ng-hide=\"config.hideSize\">\n                <a href=\"\" ng-click=\"order(\'model.size\')\">\n                    {{\"size\" | translate}}\n                    <span class=\"sortorder\" ng-show=\"predicate[1] === \'model.size\'\" ng-class=\"{reverse:reverse}\"></span>\n                </a>\n            </th>\n            <th class=\"hidden-sm hidden-xs\" ng-hide=\"config.hideDate\">\n                <a href=\"\" ng-click=\"order(\'model.date\')\">\n                    {{\"date\" | translate}}\n                    <span class=\"sortorder\" ng-show=\"predicate[1] === \'model.date\'\" ng-class=\"{reverse:reverse}\"></span>\n                </a>\n            </th>\n            <th class=\"hidden-sm hidden-xs\" ng-hide=\"config.hidePermissions\">\n                <a href=\"\" ng-click=\"order(\'model.permissions\')\">\n                    {{\"permissions\" | translate}}\n                    <span class=\"sortorder\" ng-show=\"predicate[1] === \'model.permissions\'\" ng-class=\"{reverse:reverse}\"></span>\n                </a>\n            </th>\n        </tr>\n    </thead>\n    <tbody class=\"file-item\">\n        <tr ng-show=\"fileNavigator.requesting\">\n            <td colspan=\"5\">\n                <div ng-include=\"config.tplPath + \'/spinner.html\'\"></div>\n            </td>\n        </tr>\n        <tr ng-show=\"!fileNavigator.requesting &amp;&amp; fileNavigator.fileList.length < 1 &amp;&amp; !fileNavigator.error\">\n            <td colspan=\"5\">\n                {{\"no_files_in_folder\" | translate}}...\n            </td>\n        </tr>\n        <tr ng-show=\"!fileNavigator.requesting &amp;&amp; fileNavigator.error\">\n            <td colspan=\"5\">\n                {{ fileNavigator.error }}\n            </td>\n        </tr>\n        <tr class=\"item-list\" ng-repeat=\"item in $parent.fileList = (fileNavigator.fileList | filter: {model:{name: query}} | orderBy:predicate:reverse)\" ng-show=\"!fileNavigator.requesting\" ng-click=\"selectOrUnselect(item, $event)\" ng-dblclick=\"smartClick(item)\" ng-right-click=\"selectOrUnselect(item, $event)\" ng-class=\"{selected: isSelected(item)}\">\n            <td>\n                <a href=\"\" title=\"{{item.model.name}} ({{item.model.size | humanReadableFileSize}})\">\n                    <i class=\"glyphicon glyphicon-folder-close\" ng-show=\"item.model.type === \'dir\'\"></i>\n                    <i class=\"glyphicon glyphicon-file\" ng-show=\"item.model.type === \'file\'\"></i>\n                    {{item.model.name | strLimit : 64}}\n                </a>\n            </td>\n            <td class=\"hidden-xs\">\n                <span ng-show=\"item.model.type !== \'dir\' || config.showSizeForDirectories\">\n                    {{item.model.size | humanReadableFileSize}}\n                </span>\n            </td>\n            <td class=\"hidden-sm hidden-xs\" ng-hide=\"config.hideDate\">\n                {{item.model.date | formatDate }}\n            </td>\n            <td class=\"hidden-sm hidden-xs\" ng-hide=\"config.hidePermissions\">\n                {{item.model.perms.toCode(item.model.type === \'dir\'?\'d\':\'-\')}}\n            </td>\n        </tr>\n    </tbody>\n</table>\n");
 $templateCache.put("src/templates/main.html","<div ng-controller=\"FileManagerCtrl\" ngf-drop=\"addForUpload($files)\" ngf-drag-over-class=\"\'upload-dragover\'\" ngf-multiple=\"true\">\n    <div ng-include=\"config.tplPath + \'/navbar.html\'\"></div>\n\n    <div class=\"container-fluid\">\n        <div class=\"row\">\n\n            <div class=\"col-sm-4 col-md-3 sidebar file-tree animated slow fadeIn\" ng-include=\"config.tplPath + \'/sidebar.html\'\" ng-show=\"config.sidebar &amp;&amp; fileNavigator.history[0]\">\n            </div>\n\n            <div class=\"main\" ng-class=\"config.sidebar &amp;&amp; fileNavigator.history[0] &amp;&amp; \'col-sm-8 col-md-9\'\">\n                <div ng-include=\"config.tplPath + \'/\' + viewTemplate\" class=\"main-navigation clearfix\"></div>\n            </div>\n        </div>\n    </div>\n\n    <div ng-include=\"config.tplPath + \'/modals.html\'\"></div>\n    <div ng-include=\"config.tplPath + \'/item-context-menu.html\'\"></div>\n</div>\n");
-$templateCache.put("src/templates/modals.html","<div class=\"modal fadeIn\" id=\"imagepreview\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n      <div class=\"modal-header\">\n        <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n            <span aria-hidden=\"true\">&times;</span>\n            <span class=\"sr-only\">{{\"close\" | translate}}</span>\n        </button>\n        <h4 class=\"modal-title\">{{\"preview\" | translate}}</h4>\n      </div>\n      <div class=\"modal-body\">\n        <div class=\"text-center\">\n          <img id=\"imagepreview-target\" class=\"preview\" alt=\"{{singleSelection().model.name}}\" ng-class=\"{\'loading\': apiMiddleware.apiHandler.inprocess}\">\n          <span class=\"label label-warning\" ng-show=\"apiMiddleware.apiHandler.inprocess\">{{\'loading\' | translate}} ...</span>\n        </div>\n        <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n      </div>\n      <div class=\"modal-footer\">\n        <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"close\" | translate}}</button>\n      </div>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"remove\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n    <form ng-submit=\"remove()\">\n      <div class=\"modal-header\">\n        <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n            <span aria-hidden=\"true\">&times;</span>\n            <span class=\"sr-only\">{{\"close\" | translate}}</span>\n        </button>\n        <h4 class=\"modal-title\">{{\"confirm\" | translate}}</h4>\n      </div>\n      <div class=\"modal-body\">\n        {{\'sure_to_delete\' | translate}} <span ng-include data-src=\"\'selected-files-msg\'\"></span>\n\n        <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n      </div>\n      <div class=\"modal-footer\">\n        <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"cancel\" | translate}}</button>\n        <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\" autofocus=\"autofocus\">{{\"remove\" | translate}}</button>\n      </div>\n      </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"move\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n        <form ng-submit=\"move()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\'move\' | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n              <div ng-include data-src=\"\'path-selector\'\" class=\"clearfix\"></div>\n              <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n            </div>\n            <div class=\"modal-footer\">\n              <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"cancel\" | translate}}</button>\n              <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\'move\' | translate}}</button>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n\n<div class=\"modal fadeIn\" id=\"rename\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n        <form ng-submit=\"rename()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\'rename\' | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n              <label class=\"radio\">{{\'enter_new_name_for\' | translate}} <b>{{singleSelection() && singleSelection().model.name}}</b></label>\n              <input class=\"form-control\" ng-model=\"singleSelection().tempModel.name\" autofocus=\"autofocus\">\n\n              <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n            </div>\n            <div class=\"modal-footer\">\n              <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"cancel\" | translate}}</button>\n              <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\'rename\' | translate}}</button>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"copy\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n        <form ng-submit=\"copy()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\'copy_file\' | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n              <div ng-show=\"singleSelection()\">\n                <label class=\"radio\">{{\'enter_new_name_for\' | translate}} <b>{{singleSelection().model.name}}</b></label>\n                <input class=\"form-control\" ng-model=\"singleSelection().tempModel.name\" autofocus=\"autofocus\">\n              </div>\n\n              <div ng-include data-src=\"\'path-selector\'\" class=\"clearfix\"></div>\n              <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n            </div>\n            <div class=\"modal-footer\">\n              <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"cancel\" | translate}}</button>\n              <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"copy\" | translate}}</button>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"compress\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n        <form ng-submit=\"compress()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\'compress\' | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n              <div ng-show=\"apiMiddleware.apiHandler.asyncSuccess\">\n                  <div class=\"label label-success error-msg\">{{\'compression_started\' | translate}}</div>\n              </div>\n              <div ng-hide=\"apiMiddleware.apiHandler.asyncSuccess\">\n                  <div ng-hide=\"config.allowedActions.compressChooseName\">\n                    {{\'sure_to_start_compression_with\' | translate}} <b>{{singleSelection().model.name}}</b> ?\n                  </div>\n                  <div ng-show=\"config.allowedActions.compressChooseName\">\n                    <label class=\"radio\">\n                      {{\'enter_file_name_for_compression\' | translate}}\n                      <span ng-include data-src=\"\'selected-files-msg\'\"></span>\n                    </label>\n                    <input class=\"form-control\" ng-model=\"temp.tempModel.name\" autofocus=\"autofocus\">\n                  </div>\n              </div>\n\n              <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n            </div>\n            <div class=\"modal-footer\">\n              <div ng-show=\"apiMiddleware.apiHandler.asyncSuccess\">\n                  <button type=\"button\" class=\"btn btn-default\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"close\" | translate}}</button>\n              </div>\n              <div ng-hide=\"apiMiddleware.apiHandler.asyncSuccess\">\n                  <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"cancel\" | translate}}</button>\n                  <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\'compress\' | translate}}</button>\n              </div>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"extract\" ng-init=\"singleSelection().emptyName()\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n        <form ng-submit=\"extract()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\'extract_item\' | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n              <div ng-show=\"apiMiddleware.apiHandler.asyncSuccess\">\n                  <div class=\"label label-success error-msg\">{{\'extraction_started\' | translate}}</div>\n              </div>\n              <div ng-hide=\"apiMiddleware.apiHandler.asyncSuccess\">\n                  <label class=\"radio\">{{\'enter_folder_name_for_extraction\' | translate}} <b>{{singleSelection().model.name}}</b></label>\n                  <input class=\"form-control\" ng-model=\"singleSelection().tempModel.name\" autofocus=\"autofocus\">\n              </div>\n              <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n            </div>\n            <div class=\"modal-footer\">\n              <div ng-show=\"apiMiddleware.apiHandler.asyncSuccess\">\n                  <button type=\"button\" class=\"btn btn-default\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"close\" | translate}}</button>\n              </div>\n              <div ng-hide=\"apiMiddleware.apiHandler.asyncSuccess\">\n                  <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"cancel\" | translate}}</button>\n                  <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\'extract\' | translate}}</button>\n              </div>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"edit\" ng-class=\"{\'modal-fullscreen\': fullscreen}\">\n  <div class=\"modal-dialog modal-lg\">\n    <div class=\"modal-content\">\n        <form ng-submit=\"edit()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <button type=\"button\" class=\"close fullscreen\" ng-click=\"fullscreen=!fullscreen\">\n                  <i class=\"glyphicon glyphicon-fullscreen\"></i>\n                  <span class=\"sr-only\">{{\'toggle_fullscreen\' | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\'edit_file\' | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n                <label class=\"radio bold\">{{ singleSelection().model.fullPath() }}</label>\n                <span class=\"label label-warning\" ng-show=\"apiMiddleware.apiHandler.inprocess\">{{\'loading\' | translate}} ...</span>\n                <textarea class=\"form-control code\" ng-model=\"singleSelection().tempModel.content\" ng-show=\"!apiMiddleware.apiHandler.inprocess\" autofocus=\"autofocus\"></textarea>\n                <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n            </div>\n            <div class=\"modal-footer\">\n              <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\'close\' | translate}}</button>\n              <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-show=\"config.allowedActions.edit\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\'edit\' | translate}}</button>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"newfolder\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n        <form ng-submit=\"createFolder()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\'new_folder\' | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n              <label class=\"radio\">{{\'folder_name\' | translate}}</label>\n              <input class=\"form-control\" ng-model=\"singleSelection().tempModel.name\" autofocus=\"autofocus\">\n              <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n            </div>\n            <div class=\"modal-footer\">\n              <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"cancel\" | translate}}</button>\n              <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\'create\' | translate}}</button>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"uploadfile\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n        <div class=\"well row\">\n            <label for=\"emailAttach\" class=\"btn crm-green\"><i class=\" fa fa-lg fa-paperclip\"> Attach Files</i></label>\n            <input id=\"emailAttach\" type=\"file\" nv-file-select uploader=\"uploader\" filters=\"checkfilecsv\" class=\"sr-only custom-file-input\">\n            <div class=\"list-group\">\n                <a class=\"list-group-item row\" href=\"\" ng-repeat=\"item in attachfile\">\n                    <div class=\"col-lg-10 col-md-10\">\n                        <h5 class=\"list-group-item-heading\">\n                            {{item.attach_file}}\n                        </h5>\n                        <p class=\"list-group-item-text\">\n                            Size:{{item.size|number:2}} KB\n                        </p>\n                    </div>\n                    <div class=\"col-lg-2 col-md-2\">\n                        <button type=\"button\" class=\"btn btn-danger btn-xs\" ng-click=\"removeAttachFile(item,actions)\">\n                            <span class=\"glyphicon glyphicon-trash\"></span> Remove\n                        </button>\n                    </div>\n\n                </a>\n            </div>\n        </div>\n        <form ng-submit=\"uploadFiles()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\"upload_files\" | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n              <label class=\"radio\">\n                {{\"files_will_uploaded_to\" | translate}} \n                <b>/{{fileNavigator.currentPath.join(\'/\')}}</b>\n              </label>\n              <button class=\"btn btn-default btn-block\" ngf-select=\"$parent.addForUpload($files)\" ngf-multiple=\"true\">\n                {{\"select_files\" | translate}}\n              </button>\n              \n              <div class=\"upload-list\">\n                <ul class=\"list-group\">\n                  <li class=\"list-group-item\" ng-repeat=\"(index, uploadFile) in $parent.uploadFileList\">\n                    <button class=\"btn btn-sm btn-danger pull-right\" ng-click=\"$parent.removeFromUpload(index)\">\n                        &times;\n                    </button>\n                    <h5 class=\"list-group-item-heading\">{{uploadFile.name}}</h5>\n                    <p class=\"list-group-item-text\">{{uploadFile.size | humanReadableFileSize}}</p>\n                  </li>\n                </ul>\n                <div ng-show=\"apiMiddleware.apiHandler.inprocess\">\n                  <em>{{\"uploading\" | translate}}... {{apiMiddleware.apiHandler.progress}}%</em>\n                  <div class=\"progress mb0\">\n                    <div class=\"progress-bar active\" role=\"progressbar\" aria-valuenow=\"{{apiMiddleware.apiHandler.progress}}\" aria-valuemin=\"0\" aria-valuemax=\"100\" style=\"width: {{apiMiddleware.apiHandler.progress}}%\"></div>\n                  </div>\n                </div>\n              </div>\n              <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n            </div>\n            <div class=\"modal-footer\">\n              <div>\n                  <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\">{{\"cancel\" | translate}}</button>\n                  <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"!$parent.uploadFileList.length || apiMiddleware.apiHandler.inprocess\">{{\'upload\' | translate}}</button>\n              </div>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"changepermissions\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n        <form ng-submit=\"changePermissions()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\'change_permissions\' | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n              <table class=\"table mb0\">\n                  <thead>\n                      <tr>\n                          <th>{{\'permissions\' | translate}}</th>\n                          <th class=\"col-xs-1 text-center\">{{\'read\' | translate}}</th>\n                          <th class=\"col-xs-1 text-center\">{{\'write\' | translate}}</th>\n                          <th class=\"col-xs-1 text-center\">{{\'exec\' | translate}}</th>\n                      </tr>\n                  </thead>\n                  <tbody>\n                      <tr ng-repeat=\"(permTypeKey, permTypeValue) in temp.tempModel.perms\">\n                          <td>{{permTypeKey | translate}}</td>\n                          <td ng-repeat=\"(permKey, permValue) in permTypeValue\" class=\"col-xs-1 text-center\" ng-click=\"main()\">\n                              <label class=\"col-xs-12\">\n                                <input type=\"checkbox\" ng-model=\"temp.tempModel.perms[permTypeKey][permKey]\">\n                              </label>\n                          </td>\n                      </tr>\n                </tbody>\n              </table>\n              <div class=\"checkbox\" ng-show=\"config.enablePermissionsRecursive && selectionHas(\'dir\')\">\n                <label>\n                  <input type=\"checkbox\" ng-model=\"temp.tempModel.recursive\"> {{\'recursive\' | translate}}\n                </label>\n              </div>\n              <div class=\"clearfix mt10\">\n                  <span class=\"label label-primary pull-left\" ng-hide=\"temp.multiple\">\n                    {{\'original\' | translate}}: \n                    {{temp.model.perms.toCode(selectionHas(\'dir\') ? \'d\':\'-\')}} \n                    ({{temp.model.perms.toOctal()}})\n                  </span>\n                  <span class=\"label label-primary pull-right\">\n                    {{\'changes\' | translate}}: \n                    {{temp.tempModel.perms.toCode(selectionHas(\'dir\') ? \'d\':\'-\')}} \n                    ({{temp.tempModel.perms.toOctal()}})\n                  </span>\n              </div>\n              <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n            </div>\n            <div class=\"modal-footer\">\n              <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\">{{\"cancel\" | translate}}</button>\n              <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"\">{{\'change\' | translate}}</button>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"selector\" ng-controller=\"ModalFileManagerCtrl\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n      <div class=\"modal-header\">\n        <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n            <span aria-hidden=\"true\">&times;</span>\n            <span class=\"sr-only\">{{\"close\" | translate}}</span>\n        </button>\n        <h4 class=\"modal-title\">{{\"select_destination_folder\" | translate}}</h4>\n      </div>\n      <div class=\"modal-body\">\n        <div>\n            <div ng-include=\"config.tplPath + \'/current-folder-breadcrumb.html\'\"></div>\n            <div ng-include=\"config.tplPath + \'/main-table-modal.html\'\"></div>\n            <hr />\n            <button class=\"btn btn-sm btn-default\" ng-click=\"selectCurrent()\">\n                <i class=\"glyphicon\"></i> {{\"select_this\" | translate}}\n            </button>\n        </div>\n      </div>\n      <div class=\"modal-footer\">\n        <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"close\" | translate}}</button>\n      </div>\n    </div>\n  </div>\n</div>\n\n<script type=\"text/ng-template\" id=\"path-selector\">\n  <div class=\"panel panel-primary mt10 mb0\">\n    <div class=\"panel-body\">\n        <div class=\"detail-sources\">\n          <div class=\"like-code mr5\"><b>{{\"selection\" | translate}}:</b>\n            <span ng-include=\"\'selected-files-msg\'\"></span>\n          </div>\n        </div>\n        <div class=\"detail-sources\">\n          <div class=\"like-code mr5\">\n            <b>{{\"destination\" | translate}}:</b> {{ getSelectedPath() }}\n          </div>\n          <a href=\"\" class=\"label label-primary\" ng-click=\"openNavigator(fileNavigator.currentPath)\">\n            {{\'change\' | translate}}\n          </a>\n        </div>\n    </div>\n  </div>\n</script>\n\n<script type=\"text/ng-template\" id=\"error-bar\">\n  <div class=\"label label-danger error-msg pull-left fadeIn\" ng-show=\"apiMiddleware.apiHandler.error\">\n    <i class=\"glyphicon glyphicon-remove-circle\"></i>\n    <span>{{apiMiddleware.apiHandler.error}}</span>\n  </div>\n</script>\n\n<script type=\"text/ng-template\" id=\"selected-files-msg\">\n  <span ng-show=\"temps.length == 1\">\n    {{singleSelection().model.name}}\n  </span>\n  <span ng-show=\"temps.length > 1\">\n    {{\'these_elements\' | translate:totalSelecteds()}}\n    <a href=\"\" class=\"label label-primary\" ng-click=\"showDetails = !showDetails\">\n      {{showDetails ? \'-\' : \'+\'}} {{\'details\' | translate}}\n    </a>\n  </span>\n  <div ng-show=\"temps.length > 1 &amp;&amp; showDetails\">\n    <ul class=\"selected-file-details\">\n      <li ng-repeat=\"tempItem in temps\">\n        <b>{{tempItem.model.name}}</b>\n      </li>\n    </ul>\n  </div>\n</script>\n");
+$templateCache.put("src/templates/modals.html","<div class=\"modal fadeIn\" id=\"imagepreview\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n      <div class=\"modal-header\">\n        <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n            <span aria-hidden=\"true\">&times;</span>\n            <span class=\"sr-only\">{{\"close\" | translate}}</span>\n        </button>\n        <h4 class=\"modal-title\">{{\"preview\" | translate}}</h4>\n      </div>\n      <div class=\"modal-body\">\n        <div class=\"text-center\">\n          <img id=\"imagepreview-target\" class=\"preview\" alt=\"{{singleSelection().model.name}}\" ng-class=\"{\'loading\': apiMiddleware.apiHandler.inprocess}\">\n          <span class=\"label label-warning\" ng-show=\"apiMiddleware.apiHandler.inprocess\">{{\'loading\' | translate}} ...</span>\n        </div>\n        <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n      </div>\n      <div class=\"modal-footer\">\n        <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"close\" | translate}}</button>\n      </div>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"remove\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n    <form ng-submit=\"remove()\">\n      <div class=\"modal-header\">\n        <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n            <span aria-hidden=\"true\">&times;</span>\n            <span class=\"sr-only\">{{\"close\" | translate}}</span>\n        </button>\n        <h4 class=\"modal-title\">{{\"confirm\" | translate}}</h4>\n      </div>\n      <div class=\"modal-body\">\n        {{\'sure_to_delete\' | translate}} <span ng-include data-src=\"\'selected-files-msg\'\"></span>\n\n        <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n      </div>\n      <div class=\"modal-footer\">\n        <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"cancel\" | translate}}</button>\n        <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\" autofocus=\"autofocus\">{{\"remove\" | translate}}</button>\n      </div>\n      </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"move\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n        <form ng-submit=\"move()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\'move\' | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n              <div ng-include data-src=\"\'path-selector\'\" class=\"clearfix\"></div>\n              <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n            </div>\n            <div class=\"modal-footer\">\n              <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"cancel\" | translate}}</button>\n              <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\'move\' | translate}}</button>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n\n<div class=\"modal fadeIn\" id=\"rename\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n        <form ng-submit=\"rename()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\'rename\' | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n              <label class=\"radio\">{{\'enter_new_name_for\' | translate}} <b>{{singleSelection() && singleSelection().model.name}}</b></label>\n              <input class=\"form-control\" ng-model=\"singleSelection().tempModel.name\" autofocus=\"autofocus\">\n\n              <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n            </div>\n            <div class=\"modal-footer\">\n              <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"cancel\" | translate}}</button>\n              <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\'rename\' | translate}}</button>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"copy\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n        <form ng-submit=\"copy()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\'copy_file\' | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n              <div ng-show=\"singleSelection()\">\n                <label class=\"radio\">{{\'enter_new_name_for\' | translate}} <b>{{singleSelection().model.name}}</b></label>\n                <input class=\"form-control\" ng-model=\"singleSelection().tempModel.name\" autofocus=\"autofocus\">\n              </div>\n\n              <div ng-include data-src=\"\'path-selector\'\" class=\"clearfix\"></div>\n              <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n            </div>\n            <div class=\"modal-footer\">\n              <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"cancel\" | translate}}</button>\n              <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"copy\" | translate}}</button>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"compress\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n        <form ng-submit=\"compress()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\'compress\' | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n              <div ng-show=\"apiMiddleware.apiHandler.asyncSuccess\">\n                  <div class=\"label label-success error-msg\">{{\'compression_started\' | translate}}</div>\n              </div>\n              <div ng-hide=\"apiMiddleware.apiHandler.asyncSuccess\">\n                  <div ng-hide=\"config.allowedActions.compressChooseName\">\n                    {{\'sure_to_start_compression_with\' | translate}} <b>{{singleSelection().model.name}}</b> ?\n                  </div>\n                  <div ng-show=\"config.allowedActions.compressChooseName\">\n                    <label class=\"radio\">\n                      {{\'enter_file_name_for_compression\' | translate}}\n                      <span ng-include data-src=\"\'selected-files-msg\'\"></span>\n                    </label>\n                    <input class=\"form-control\" ng-model=\"temp.tempModel.name\" autofocus=\"autofocus\">\n                  </div>\n              </div>\n\n              <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n            </div>\n            <div class=\"modal-footer\">\n              <div ng-show=\"apiMiddleware.apiHandler.asyncSuccess\">\n                  <button type=\"button\" class=\"btn btn-default\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"close\" | translate}}</button>\n              </div>\n              <div ng-hide=\"apiMiddleware.apiHandler.asyncSuccess\">\n                  <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"cancel\" | translate}}</button>\n                  <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\'compress\' | translate}}</button>\n              </div>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"extract\" ng-init=\"singleSelection().emptyName()\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n        <form ng-submit=\"extract()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\'extract_item\' | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n              <div ng-show=\"apiMiddleware.apiHandler.asyncSuccess\">\n                  <div class=\"label label-success error-msg\">{{\'extraction_started\' | translate}}</div>\n              </div>\n              <div ng-hide=\"apiMiddleware.apiHandler.asyncSuccess\">\n                  <label class=\"radio\">{{\'enter_folder_name_for_extraction\' | translate}} <b>{{singleSelection().model.name}}</b></label>\n                  <input class=\"form-control\" ng-model=\"singleSelection().tempModel.name\" autofocus=\"autofocus\">\n              </div>\n              <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n            </div>\n            <div class=\"modal-footer\">\n              <div ng-show=\"apiMiddleware.apiHandler.asyncSuccess\">\n                  <button type=\"button\" class=\"btn btn-default\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"close\" | translate}}</button>\n              </div>\n              <div ng-hide=\"apiMiddleware.apiHandler.asyncSuccess\">\n                  <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"cancel\" | translate}}</button>\n                  <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\'extract\' | translate}}</button>\n              </div>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"edit\" ng-class=\"{\'modal-fullscreen\': fullscreen}\">\n  <div class=\"modal-dialog modal-lg\">\n    <div class=\"modal-content\">\n        <form ng-submit=\"edit()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <button type=\"button\" class=\"close fullscreen\" ng-click=\"fullscreen=!fullscreen\">\n                  <i class=\"glyphicon glyphicon-fullscreen\"></i>\n                  <span class=\"sr-only\">{{\'toggle_fullscreen\' | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\'edit_file\' | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n                <label class=\"radio bold\">{{ singleSelection().model.fullPath() }}</label>\n                <span class=\"label label-warning\" ng-show=\"apiMiddleware.apiHandler.inprocess\">{{\'loading\' | translate}} ...</span>\n                <textarea class=\"form-control code\" ng-model=\"singleSelection().tempModel.content\" ng-show=\"!apiMiddleware.apiHandler.inprocess\" autofocus=\"autofocus\"></textarea>\n                <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n            </div>\n            <div class=\"modal-footer\">\n              <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\'close\' | translate}}</button>\n              <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-show=\"config.allowedActions.edit\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\'edit\' | translate}}</button>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"newfolder\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n        <form ng-submit=\"createFolder()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\'new_folder\' | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n              <label class=\"radio\">{{\'folder_name\' | translate}}</label>\n              <input class=\"form-control\" ng-model=\"singleSelection().tempModel.name\" autofocus=\"autofocus\">\n              <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n            </div>\n            <div class=\"modal-footer\">\n              <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"cancel\" | translate}}</button>\n              <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\'create\' | translate}}</button>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"uploadfile\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n        <form ng-submit=\"uploadFiles()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\"upload_files\" | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n              <!--<label  class=\"radio\">\n                {{\"files_will_uploaded_to\" | translate}}\n                <b>/{{fileNavigator.currentPath.join(\'/\')}}</b>\n              </label>\n              <button class=\"btn btn-default btn-block\" ngf-select=\"$parent.addForUpload($files)\" ngf-multiple=\"true\">\n                {{\"select_files\" | translate}}\n              </button>-->\n                <label class=\"radio\">\n                    {{\"files_will_uploaded_to\" | translate}}\n                    <b>/{{fileNavigator.currentPath.join(\'/\')}}</b>\n                </label>\n                <label for=\"emailAttach\" class=\"btn btn-default btn-block\"> Select Files</label>\n                <input id=\"emailAttach\" type=\"file\" nv-file-select uploader=\"uploader\" filters=\"checkfilecsv\" class=\"sr-only custom-file-input\">\n               <!-- <div class=\"row\">\n                    progress:\n                    <div class=\"progress\" style=\"margin-bottom:20px\">\n                        <div class=\"progress-bar\" role=\"progressbar\" ng-style=\"{ \'width\': uploader.progress + \'%\' }\" style=\"width: 0%;\"></div>\n                    </div>\n                </div>-->\n\n                <div class=\"upload-list\">\n                <ul class=\"list-group\">\n                  <li class=\"list-group-item\" ng-repeat=\"(index, uploadFile) in $parent.uploadFileList\">\n                    <button class=\"btn btn-sm btn-danger pull-right\" ng-click=\"$parent.removeFromUpload(index)\">\n                        &times;\n                    </button>\n                    <h5 class=\"list-group-item-heading\">{{uploadFile.name}}</h5>\n                    <p class=\"list-group-item-text\">{{uploadFile.size | humanReadableFileSize}}</p>\n                  </li>\n                </ul>\n                <!--<div ng-show=\"apiMiddleware.apiHandler.inprocess\">-->\n                    <div>\n                  <!--<em>{{\"uploading\" | translate}}... {{apiMiddleware.apiHandler.progress}}%</em>-->\n                  <div class=\"mb0\">\n                      progress:\n                      <div class=\"progress\" style=\"margin-bottom:20px\">\n                          <div class=\"progress-bar\" role=\"progressbar\" ng-style=\"{ \'width\': uploader.progress + \'%\' }\" style=\"width: 0%;\"></div>\n                      </div>\n                  </div>\n                </div>\n              </div>\n              <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n\n                <!--<div class=\"well row\">\n                    <label for=\"emailAttach\" class=\"btn crm-green\"><i class=\" fa fa-lg fa-paperclip\"> Select Files</i></label>\n                    <input id=\"emailAttach\" type=\"file\" nv-file-select uploader=\"uploader\" filters=\"checkfilecsv\" class=\"sr-only custom-file-input\">\n                    <div class=\"list-group\">\n                        <a class=\"list-group-item row\" href=\"\" ng-repeat=\"item in attachfile\">\n                            <div class=\"col-lg-10 col-md-10\">\n                                <h5 class=\"list-group-item-heading\">\n                                    {{item.attach_file}}\n                                </h5>\n                                <p class=\"list-group-item-text\">\n                                    Size:{{item.size|number:2}} KB\n                                </p>\n                            </div>\n                            <div class=\"col-lg-2 col-md-2\">\n                                <button type=\"button\" class=\"btn btn-danger btn-xs\" ng-click=\"removeAttachFile(item,actions)\">\n                                    <span class=\"glyphicon glyphicon-trash\"></span> Remove\n                                </button>\n                            </div>\n\n                        </a>\n                    </div>\n                </div>-->\n            </div>\n            <div class=\"modal-footer\">\n              <div>\n                  <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\">{{\"cancel\" | translate}}</button>\n                  <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"!$parent.uploadFileList.length || apiMiddleware.apiHandler.inprocess\">{{\'upload\' | translate}}</button>\n              </div>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"changepermissions\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n        <form ng-submit=\"changePermissions()\">\n            <div class=\"modal-header\">\n              <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n                  <span aria-hidden=\"true\">&times;</span>\n                  <span class=\"sr-only\">{{\"close\" | translate}}</span>\n              </button>\n              <h4 class=\"modal-title\">{{\'change_permissions\' | translate}}</h4>\n            </div>\n            <div class=\"modal-body\">\n              <table class=\"table mb0\">\n                  <thead>\n                      <tr>\n                          <th>{{\'permissions\' | translate}}</th>\n                          <th class=\"col-xs-1 text-center\">{{\'read\' | translate}}</th>\n                          <th class=\"col-xs-1 text-center\">{{\'write\' | translate}}</th>\n                          <th class=\"col-xs-1 text-center\">{{\'exec\' | translate}}</th>\n                      </tr>\n                  </thead>\n                  <tbody>\n                      <tr ng-repeat=\"(permTypeKey, permTypeValue) in temp.tempModel.perms\">\n                          <td>{{permTypeKey | translate}}</td>\n                          <td ng-repeat=\"(permKey, permValue) in permTypeValue\" class=\"col-xs-1 text-center\" ng-click=\"main()\">\n                              <label class=\"col-xs-12\">\n                                <input type=\"checkbox\" ng-model=\"temp.tempModel.perms[permTypeKey][permKey]\">\n                              </label>\n                          </td>\n                      </tr>\n                </tbody>\n              </table>\n              <div class=\"checkbox\" ng-show=\"config.enablePermissionsRecursive && selectionHas(\'dir\')\">\n                <label>\n                  <input type=\"checkbox\" ng-model=\"temp.tempModel.recursive\"> {{\'recursive\' | translate}}\n                </label>\n              </div>\n              <div class=\"clearfix mt10\">\n                  <span class=\"label label-primary pull-left\" ng-hide=\"temp.multiple\">\n                    {{\'original\' | translate}}: \n                    {{temp.model.perms.toCode(selectionHas(\'dir\') ? \'d\':\'-\')}} \n                    ({{temp.model.perms.toOctal()}})\n                  </span>\n                  <span class=\"label label-primary pull-right\">\n                    {{\'changes\' | translate}}: \n                    {{temp.tempModel.perms.toCode(selectionHas(\'dir\') ? \'d\':\'-\')}} \n                    ({{temp.tempModel.perms.toOctal()}})\n                  </span>\n              </div>\n              <div ng-include data-src=\"\'error-bar\'\" class=\"clearfix\"></div>\n            </div>\n            <div class=\"modal-footer\">\n              <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\">{{\"cancel\" | translate}}</button>\n              <button type=\"submit\" class=\"btn btn-primary crm-green\" ng-disabled=\"\">{{\'change\' | translate}}</button>\n            </div>\n        </form>\n    </div>\n  </div>\n</div>\n\n<div class=\"modal fadeIn\" id=\"selector\" ng-controller=\"ModalFileManagerCtrl\">\n  <div class=\"modal-dialog\">\n    <div class=\"modal-content\">\n      <div class=\"modal-header\">\n        <button type=\"button\" class=\"close\" data-dismiss=\"modal\">\n            <span aria-hidden=\"true\">&times;</span>\n            <span class=\"sr-only\">{{\"close\" | translate}}</span>\n        </button>\n        <h4 class=\"modal-title\">{{\"select_destination_folder\" | translate}}</h4>\n      </div>\n      <div class=\"modal-body\">\n        <div>\n            <div ng-include=\"config.tplPath + \'/current-folder-breadcrumb.html\'\"></div>\n            <div ng-include=\"config.tplPath + \'/main-table-modal.html\'\"></div>\n            <hr />\n            <button class=\"btn btn-sm btn-default\" ng-click=\"selectCurrent()\">\n                <i class=\"glyphicon\"></i> {{\"select_this\" | translate}}\n            </button>\n        </div>\n      </div>\n      <div class=\"modal-footer\">\n        <button type=\"button\" class=\"btn btn-default crm-orange\" data-dismiss=\"modal\" ng-disabled=\"apiMiddleware.apiHandler.inprocess\">{{\"close\" | translate}}</button>\n      </div>\n    </div>\n  </div>\n</div>\n\n<script type=\"text/ng-template\" id=\"path-selector\">\n  <div class=\"panel panel-primary mt10 mb0\">\n    <div class=\"panel-body\">\n        <div class=\"detail-sources\">\n          <div class=\"like-code mr5\"><b>{{\"selection\" | translate}}:</b>\n            <span ng-include=\"\'selected-files-msg\'\"></span>\n          </div>\n        </div>\n        <div class=\"detail-sources\">\n          <div class=\"like-code mr5\">\n            <b>{{\"destination\" | translate}}:</b> {{ getSelectedPath() }}\n          </div>\n          <a href=\"\" class=\"label label-primary\" ng-click=\"openNavigator(fileNavigator.currentPath)\">\n            {{\'change\' | translate}}\n          </a>\n        </div>\n    </div>\n  </div>\n</script>\n\n<script type=\"text/ng-template\" id=\"error-bar\">\n  <div class=\"label label-danger error-msg pull-left fadeIn\" ng-show=\"apiMiddleware.apiHandler.error\">\n    <i class=\"glyphicon glyphicon-remove-circle\"></i>\n    <span>{{apiMiddleware.apiHandler.error}}</span>\n  </div>\n</script>\n\n<script type=\"text/ng-template\" id=\"selected-files-msg\">\n  <span ng-show=\"temps.length == 1\">\n    {{singleSelection().model.name}}\n  </span>\n  <span ng-show=\"temps.length > 1\">\n    {{\'these_elements\' | translate:totalSelecteds()}}\n    <a href=\"\" class=\"label label-primary\" ng-click=\"showDetails = !showDetails\">\n      {{showDetails ? \'-\' : \'+\'}} {{\'details\' | translate}}\n    </a>\n  </span>\n  <div ng-show=\"temps.length > 1 &amp;&amp; showDetails\">\n    <ul class=\"selected-file-details\">\n      <li ng-repeat=\"tempItem in temps\">\n        <b>{{tempItem.model.name}}</b>\n      </li>\n    </ul>\n  </div>\n</script>\n");
 $templateCache.put("src/templates/navbar.html","<nav class=\"navbar navbar-inverse\">\n    <div class=\"container-fluid\">\n        <div class=\"row\">\n            <div class=\"col-sm-9 col-md-10 hidden-xs\">\n                <div ng-show=\"!config.breadcrumb\">\n                    <a class=\"navbar-brand hidden-xs ng-binding\" href=\"\">angular-filemanager</a>\n                </div>\n                <div ng-include=\"config.tplPath + \'/current-folder-breadcrumb.html\'\" ng-show=\"config.breadcrumb\">\n                </div>\n            </div>\n            <div class=\"col-sm-3 col-md-2\">\n                <div class=\"navbar-collapse\">\n                    <div class=\"navbar-form navbar-right text-right\">\n                        <div class=\"pull-left visible-xs\" ng-if=\"fileNavigator.currentPath.length\">\n                            <button class=\"btn btn-primary btn-flat\" ng-click=\"fileNavigator.upDir()\">\n                                <i class=\"glyphicon glyphicon-chevron-left\"></i>\n                            </button>\n                            {{fileNavigator.getCurrentFolderName() | strLimit : 12}}\n                        </div>\n                        <div class=\"btn-group\">\n                            <button class=\"btn btn-flat btn-sm dropdown-toggle\" type=\"button\" id=\"dropDownMenuSearch\" data-toggle=\"dropdown\" aria-expanded=\"true\">\n                                <i class=\"glyphicon glyphicon-search mr2\"></i>\n                            </button>\n                            <div class=\"dropdown-menu animated fast fadeIn pull-right\" role=\"menu\" aria-labelledby=\"dropDownMenuLang\">\n                                <input type=\"text\" class=\"form-control\" ng-show=\"config.searchForm\" placeholder=\"{{\'search\' | translate}}...\" ng-model=\"$parent.query\">\n                            </div>\n                        </div>\n\n                        <button class=\"btn btn-flat btn-sm\" ng-click=\"$parent.setTemplate(\'main-icons.html\')\" ng-show=\"$parent.viewTemplate !==\'main-icons.html\'\" title=\"{{\'icons\' | translate}}\">\n                            <i class=\"glyphicon glyphicon-th-large\"></i>\n                        </button>\n\n                        <button class=\"btn btn-flat btn-sm\" ng-click=\"$parent.setTemplate(\'main-table.html\')\" ng-show=\"$parent.viewTemplate !==\'main-table.html\'\" title=\"{{\'list\' | translate}}\">\n                            <i class=\"glyphicon glyphicon-th-list\"></i>\n                        </button>\n\n                        <div class=\"btn-group\">\n                            <button class=\"btn btn-flat btn-sm dropdown-toggle\" type=\"button\" id=\"more\" data-toggle=\"dropdown\" data-dismiss=\"modal\" aria-expanded=false\">\n                                <i class=\"fa fa-ellipsis-v\"></i>\n                            </button>\n\n                            <ul class=\"dropdown-menu scrollable-menu animated fast fadeIn pull-right\" role=\"menu\" aria-labelledby=\"more\">\n                                <li role=\"presentation\" ng-show=\"config.allowedActions.createFolder\" ng-click=\"modal(\'newfolder\') && prepareNewFolder()\">\n                                    <a role=\"menuitem\" tabindex=\"-1\">\n                                        <i class=\"glyphicon glyphicon-plus\"></i> {{\"new_folder\" | translate}}\n                                    </a>\n                                </li>\n                                <li role=\"presentation\" ng-show=\"config.allowedActions.upload\" ng-click=\"modal(\'uploadfile\')\">\n                                    <a  role=\"menuitem\" tabindex=\"-1\">\n                                        <i class=\"glyphicon glyphicon-cloud-upload\"></i> {{\"upload_files\" | translate}}\n                                    </a>\n                                </li>\n                            </ul>\n                        </div>\n                    </div>\n                </div>\n            </div>\n        </div>\n    </div>\n</nav>\n");
 $templateCache.put("src/templates/sidebar.html","<ul class=\"nav nav-sidebar file-tree-root\">\n    <li ng-repeat=\"item in fileNavigator.history\" ng-include=\"\'folder-branch-item\'\" ng-class=\"{\'active\': item.name == fileNavigator.currentPath.join(\'/\')}\"></li>\n</ul>\n\n<script type=\"text/ng-template\" id=\"folder-branch-item\">\n    <a href=\"\" ng-click=\"fileNavigator.folderClick(item.item)\" class=\"animated fast fadeInDown\">\n\n        <span class=\"point\">\n            <i class=\"glyphicon glyphicon-chevron-down\" ng-show=\"isInThisPath(item.name)\"></i>\n            <i class=\"glyphicon glyphicon-chevron-right\" ng-show=\"!isInThisPath(item.name)\"></i>\n        </span>\n\n        <i class=\"glyphicon glyphicon-folder-open mr2\" ng-show=\"isInThisPath(item.name)\"></i>\n        <i class=\"glyphicon glyphicon-folder-close mr2\" ng-show=\"!isInThisPath(item.name)\"></i>\n        {{ (item.name.split(\'/\').pop() || fileNavigator.getBasePath().join(\'/\') || \'/\') | strLimit : 30 }}\n    </a>\n    <ul class=\"nav nav-sidebar\">\n        <li ng-repeat=\"item in item.nodes\" ng-include=\"\'folder-branch-item\'\" ng-class=\"{\'active\': item.name == fileNavigator.currentPath.join(\'/\')}\"></li>\n    </ul>\n</script>");
 $templateCache.put("src/templates/spinner.html","<div class=\"spinner-wrapper col-xs-12\">\n    <svg class=\"spinner-container\" style=\"width:65px;height:65px\" viewBox=\"0 0 44 44\">\n        <circle class=\"path\" cx=\"22\" cy=\"22\" r=\"20\" fill=\"none\" stroke-width=\"4\"></circle>\n    </svg>\n</div>");}]);
