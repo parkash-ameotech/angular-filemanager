@@ -426,6 +426,8 @@
             });
 
             uploader.onBeforeUploadItem = function (item) {
+                //$scope.fileNavigator.refresh();
+                console.log($scope.fileNavigator.currentPath);
                 item.formData.push({name: item.file.name, size: item.file.size / 1024, path: $scope.fileNavigator.currentPath.join('/')});
 
             };
