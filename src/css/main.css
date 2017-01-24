@@ -22,13 +22,7 @@ body {
 }
 
 .navbar .navbar-toggle {
-  padding: 5px 10px;
-}
-
-.navbar .navbar-brand {
-  font-size: inherit;
-  height: 55px;
-  line-height: 100%;
+  padding: 0 10px;
 }
 
 .btn.btn-default {

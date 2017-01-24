@@ -546,183 +546,6 @@
 
 (function(angular) {
     'use strict';
-    angular.module('FileManagerApp').service('chmod', function () {
-
-        var Chmod = function(initValue) {
-            this.owner = this.getRwxObj();
-            this.group = this.getRwxObj();
-            this.others = this.getRwxObj();
-
-            if (initValue) {
-                var codes = isNaN(initValue) ?
-                    this.convertfromCode(initValue):
-                    this.convertfromOctal(initValue);
-
-                if (! codes) {
-                    throw new Error('Invalid chmod input data (%s)'.replace('%s', initValue));
-                }
-
-                this.owner = codes.owner;
-                this.group = codes.group;
-                this.others = codes.others;
-            }
-        };
-
-        Chmod.prototype.toOctal = function(prepend, append) {
-            var result = [];
-            ['owner', 'group', 'others'].forEach(function(key, i) {
-                result[i]  = this[key].read  && this.octalValues.read  || 0;
-                result[i] += this[key].write && this.octalValues.write || 0;
-                result[i] += this[key].exec  && this.octalValues.exec  || 0;
-            }.bind(this));
-            return (prepend||'') + result.join('') + (append||'');
-        };
-
-        Chmod.prototype.toCode = function(prepend, append) {
-            var result = [];
-            ['owner', 'group', 'others'].forEach(function(key, i) {
-                result[i]  = this[key].read  && this.codeValues.read  || '-';
-                result[i] += this[key].write && this.codeValues.write || '-';
-                result[i] += this[key].exec  && this.codeValues.exec  || '-';
-            }.bind(this));
-            return (prepend||'') + result.join('') + (append||'');
-        };
-
-        Chmod.prototype.getRwxObj = function() {
-            return {
-                read: false,
-                write: false,
-                exec: false
-            };
-        };
-
-        Chmod.prototype.octalValues = {
-            read: 4, write: 2, exec: 1
-        };
-
-        Chmod.prototype.codeValues = {
-            read: 'r', write: 'w', exec: 'x'
-        };
-
-        Chmod.prototype.convertfromCode = function (str) {
-            str = ('' + str).replace(/\s/g, '');
-            str = str.length === 10 ? str.substr(1) : str;
-            if (! /^[-rwxts]{9}$/.test(str)) {
-                return;
-            }
-
-            var result = [], vals = str.match(/.{1,3}/g);
-            for (var i in vals) {
-                var rwxObj = this.getRwxObj();
-                rwxObj.read  = /r/.test(vals[i]);
-                rwxObj.write = /w/.test(vals[i]);
-                rwxObj.exec  = /x|t/.test(vals[i]);
-                result.push(rwxObj);
-            }
-
-            return {
-                owner : result[0],
-                group : result[1],
-                others: result[2]
-            };
-        };
-
-        Chmod.prototype.convertfromOctal = function (str) {
-            str = ('' + str).replace(/\s/g, '');
-            str = str.length === 4 ? str.substr(1) : str;
-            if (! /^[0-7]{3}$/.test(str)) {
-                return;
-            }
-
-            var result = [], vals = str.match(/.{1}/g);
-            for (var i in vals) {
-                var rwxObj = this.getRwxObj();
-                rwxObj.read  = /[4567]/.test(vals[i]);
-                rwxObj.write = /[2367]/.test(vals[i]);
-                rwxObj.exec  = /[1357]/.test(vals[i]);
-                result.push(rwxObj);
-            }
-
-            return {
-                owner : result[0],
-                group : result[1],
-                others: result[2]
-            };
-        };
-
-        return Chmod;
-    });
-})(angular);
-(function(angular) {
-    'use strict';
-    angular.module('FileManagerApp').factory('item', ['fileManagerConfig', 'chmod', function(fileManagerConfig, Chmod) {
-
-        var Item = function(model, path) {
-            var rawModel = {
-                name: model && model.name || '',
-                path: path || [],
-                type: model && model.type || 'file',
-                size: model && parseInt(model.size || 0),
-                date: parseMySQLDate(model && model.date),
-                perms: new Chmod(model && model.rights),
-                content: model && model.content || '',
-                recursive: false,
-                fullPath: function() {
-                    var path = this.path.filter(Boolean);
-                    return ('/' + path.join('/') + '/' + this.name).replace(/\/\//, '/');
-                }
-            };
-
-            this.error = '';
-            this.processing = false;
-
-            this.model = angular.copy(rawModel);
-            this.tempModel = angular.copy(rawModel);
-
-            function parseMySQLDate(mysqlDate) {
-                var d = (mysqlDate || '').toString().split(/[- :]/);
-                return new Date(d[0], d[1] - 1, d[2], d[3], d[4], d[5]);
-            }
-        };
-
-        Item.prototype.update = function() {
-            angular.extend(this.model, angular.copy(this.tempModel));
-        };
-
-        Item.prototype.revert = function() {
-            angular.extend(this.tempModel, angular.copy(this.model));
-            this.error = '';
-        };
-
-        Item.prototype.isFolder = function() {
-            return this.model.type === 'dir';
-        };
-
-        Item.prototype.isEditable = function() {
-            return !this.isFolder() && fileManagerConfig.isEditableFilePattern.test(this.model.name);
-        };
-
-        Item.prototype.isImage = function() {
-            return fileManagerConfig.isImageFilePattern.test(this.model.name);
-        };
-
-        Item.prototype.isCompressible = function() {
-            return this.isFolder();
-        };
-
-        Item.prototype.isExtractable = function() {
-            return !this.isFolder() && fileManagerConfig.isExtractableFilePattern.test(this.model.name);
-        };
-
-        Item.prototype.isSelectable = function() {
-            return (this.isFolder() && fileManagerConfig.allowedActions.pickFolders) || (!this.isFolder() && fileManagerConfig.allowedActions.pickFiles);
-        };
-
-        return Item;
-    }]);
-})(angular);
-(function(angular) {
-    'use strict';
     var app = angular.module('FileManagerApp');
 
     app.filter('strLimit', ['$filter', function($filter) {
@@ -3554,6 +3377,183 @@ module
     }]);
 })(angular);
 
+(function(angular) {
+    'use strict';
+    angular.module('FileManagerApp').service('chmod', function () {
+
+        var Chmod = function(initValue) {
+            this.owner = this.getRwxObj();
+            this.group = this.getRwxObj();
+            this.others = this.getRwxObj();
+
+            if (initValue) {
+                var codes = isNaN(initValue) ?
+                    this.convertfromCode(initValue):
+                    this.convertfromOctal(initValue);
+
+                if (! codes) {
+                    throw new Error('Invalid chmod input data (%s)'.replace('%s', initValue));
+                }
+
+                this.owner = codes.owner;
+                this.group = codes.group;
+                this.others = codes.others;
+            }
+        };
+
+        Chmod.prototype.toOctal = function(prepend, append) {
+            var result = [];
+            ['owner', 'group', 'others'].forEach(function(key, i) {
+                result[i]  = this[key].read  && this.octalValues.read  || 0;
+                result[i] += this[key].write && this.octalValues.write || 0;
+                result[i] += this[key].exec  && this.octalValues.exec  || 0;
+            }.bind(this));
+            return (prepend||'') + result.join('') + (append||'');
+        };
+
+        Chmod.prototype.toCode = function(prepend, append) {
+            var result = [];
+            ['owner', 'group', 'others'].forEach(function(key, i) {
+                result[i]  = this[key].read  && this.codeValues.read  || '-';
+                result[i] += this[key].write && this.codeValues.write || '-';
+                result[i] += this[key].exec  && this.codeValues.exec  || '-';
+            }.bind(this));
+            return (prepend||'') + result.join('') + (append||'');
+        };
+
+        Chmod.prototype.getRwxObj = function() {
+            return {
+                read: false,
+                write: false,
+                exec: false
+            };
+        };
+
+        Chmod.prototype.octalValues = {
+            read: 4, write: 2, exec: 1
+        };
+
+        Chmod.prototype.codeValues = {
+            read: 'r', write: 'w', exec: 'x'
+        };
+
+        Chmod.prototype.convertfromCode = function (str) {
+            str = ('' + str).replace(/\s/g, '');
+            str = str.length === 10 ? str.substr(1) : str;
+            if (! /^[-rwxts]{9}$/.test(str)) {
+                return;
+            }
+
+            var result = [], vals = str.match(/.{1,3}/g);
+            for (var i in vals) {
+                var rwxObj = this.getRwxObj();
+                rwxObj.read  = /r/.test(vals[i]);
+                rwxObj.write = /w/.test(vals[i]);
+                rwxObj.exec  = /x|t/.test(vals[i]);
+                result.push(rwxObj);
+            }
+
+            return {
+                owner : result[0],
+                group : result[1],
+                others: result[2]
+            };
+        };
+
+        Chmod.prototype.convertfromOctal = function (str) {
+            str = ('' + str).replace(/\s/g, '');
+            str = str.length === 4 ? str.substr(1) : str;
+            if (! /^[0-7]{3}$/.test(str)) {
+                return;
+            }
+
+            var result = [], vals = str.match(/.{1}/g);
+            for (var i in vals) {
+                var rwxObj = this.getRwxObj();
+                rwxObj.read  = /[4567]/.test(vals[i]);
+                rwxObj.write = /[2367]/.test(vals[i]);
+                rwxObj.exec  = /[1357]/.test(vals[i]);
+                result.push(rwxObj);
+            }
+
+            return {
+                owner : result[0],
+                group : result[1],
+                others: result[2]
+            };
+        };
+
+        return Chmod;
+    });
+})(angular);
+(function(angular) {
+    'use strict';
+    angular.module('FileManagerApp').factory('item', ['fileManagerConfig', 'chmod', function(fileManagerConfig, Chmod) {
+
+        var Item = function(model, path) {
+            var rawModel = {
+                name: model && model.name || '',
+                path: path || [],
+                type: model && model.type || 'file',
+                size: model && parseInt(model.size || 0),
+                date: parseMySQLDate(model && model.date),
+                perms: new Chmod(model && model.rights),
+                content: model && model.content || '',
+                recursive: false,
+                fullPath: function() {
+                    var path = this.path.filter(Boolean);
+                    return ('/' + path.join('/') + '/' + this.name).replace(/\/\//, '/');
+                }
+            };
+
+            this.error = '';
+            this.processing = false;
+
+            this.model = angular.copy(rawModel);
+            this.tempModel = angular.copy(rawModel);
+
+            function parseMySQLDate(mysqlDate) {
+                var d = (mysqlDate || '').toString().split(/[- :]/);
+                return new Date(d[0], d[1] - 1, d[2], d[3], d[4], d[5]);
+            }
+        };
+
+        Item.prototype.update = function() {
+            angular.extend(this.model, angular.copy(this.tempModel));
+        };
+
+        Item.prototype.revert = function() {
+            angular.extend(this.tempModel, angular.copy(this.model));
+            this.error = '';
+        };
+
+        Item.prototype.isFolder = function() {
+            return this.model.type === 'dir';
+        };
+
+        Item.prototype.isEditable = function() {
+            return !this.isFolder() && fileManagerConfig.isEditableFilePattern.test(this.model.name);
+        };
+
+        Item.prototype.isImage = function() {
+            return fileManagerConfig.isImageFilePattern.test(this.model.name);
+        };
+
+        Item.prototype.isCompressible = function() {
+            return this.isFolder();
+        };
+
+        Item.prototype.isExtractable = function() {
+            return !this.isFolder() && fileManagerConfig.isExtractableFilePattern.test(this.model.name);
+        };
+
+        Item.prototype.isSelectable = function() {
+            return (this.isFolder() && fileManagerConfig.allowedActions.pickFolders) || (!this.isFolder() && fileManagerConfig.allowedActions.pickFiles);
+        };
+
+        return Item;
+    }]);
+})(angular);
 (function(angular, $) {
     'use strict';
     angular.module('FileManagerApp').service('apiHandler', ['$http', '$q', '$window', '$translate', 'Upload',
