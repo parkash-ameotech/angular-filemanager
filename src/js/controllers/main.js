@@ -198,6 +198,7 @@
         };
 
         $scope.download = function() {
+
             var item = $scope.singleSelection();
             if ($scope.selectionHas('dir')) {
                 return;

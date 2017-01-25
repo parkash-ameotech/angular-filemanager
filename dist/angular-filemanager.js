@@ -257,6 +257,7 @@
         };
 
         $scope.download = function() {
+
             var item = $scope.singleSelection();
             if ($scope.selectionHas('dir')) {
                 return;
@@ -546,6 +547,53 @@
 
 (function(angular) {
     'use strict';
+    var app = angular.module('FileManagerApp');
+
+    app.filter('strLimit', ['$filter', function($filter) {
+        return function(input, limit, more) {
+            if (input.length <= limit) {
+                return input;
+            }
+            return $filter('limitTo')(input, limit) + (more || '...');
+        };
+    }]);
+
+    app.filter('fileExtension', ['$filter', function($filter) {
+        return function(input) {
+            return /\./.test(input) && $filter('strLimit')(input.split('.').pop(), 3, '..') || '';
+        };
+    }]);
+
+    app.filter('formatDate', ['$filter', function() {
+        return function(input) {
+            return input instanceof Date ?
+                input.toISOString().substring(0, 19).replace('T', ' ') :
+                (input.toLocaleString || input.toString).apply(input);
+        };
+    }]);
+
+    app.filter('humanReadableFileSize', ['$filter', 'fileManagerConfig', function($filter, fileManagerConfig) {
+      // See https://en.wikipedia.org/wiki/Binary_prefix
+      var decimalByteUnits = [' kB', ' MB', ' GB', ' TB', 'PB', 'EB', 'ZB', 'YB'];
+      var binaryByteUnits = ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+
+      return function(input) {
+        var i = -1;
+        var fileSizeInBytes = input;
+
+        do {
+          fileSizeInBytes = fileSizeInBytes / 1024;
+          i++;
+        } while (fileSizeInBytes > 1024);
+
+        var result = fileManagerConfig.useBinarySizePrefixes ? binaryByteUnits[i] : decimalByteUnits[i];
+        return Math.max(fileSizeInBytes, 0.1).toFixed(1) + ' ' + result;
+      };
+    }]);
+})(angular);
+
+(function(angular) {
+    'use strict';
     angular.module('FileManagerApp').service('chmod', function () {
 
         var Chmod = function(initValue) {
@@ -721,53 +769,6 @@
         return Item;
     }]);
 })(angular);
-(function(angular) {
-    'use strict';
-    var app = angular.module('FileManagerApp');
-
-    app.filter('strLimit', ['$filter', function($filter) {
-        return function(input, limit, more) {
-            if (input.length <= limit) {
-                return input;
-            }
-            return $filter('limitTo')(input, limit) + (more || '...');
-        };
-    }]);
-
-    app.filter('fileExtension', ['$filter', function($filter) {
-        return function(input) {
-            return /\./.test(input) && $filter('strLimit')(input.split('.').pop(), 3, '..') || '';
-        };
-    }]);
-
-    app.filter('formatDate', ['$filter', function() {
-        return function(input) {
-            return input instanceof Date ?
-                input.toISOString().substring(0, 19).replace('T', ' ') :
-                (input.toLocaleString || input.toString).apply(input);
-        };
-    }]);
-
-    app.filter('humanReadableFileSize', ['$filter', 'fileManagerConfig', function($filter, fileManagerConfig) {
-      // See https://en.wikipedia.org/wiki/Binary_prefix
-      var decimalByteUnits = [' kB', ' MB', ' GB', ' TB', 'PB', 'EB', 'ZB', 'YB'];
-      var binaryByteUnits = ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
-
-      return function(input) {
-        var i = -1;
-        var fileSizeInBytes = input;
-
-        do {
-          fileSizeInBytes = fileSizeInBytes / 1024;
-          i++;
-        } while (fileSizeInBytes > 1024);
-
-        var result = fileManagerConfig.useBinarySizePrefixes ? binaryByteUnits[i] : decimalByteUnits[i];
-        return Math.max(fileSizeInBytes, 0.1).toFixed(1) + ' ' + result;
-      };
-    }]);
-})(angular);
-
 /*
  angular-file-upload v1.1.5
  https://github.com/nervgh/angular-file-upload
@@ -3782,6 +3783,7 @@ module
         };
 
         ApiHandler.prototype.download = function(apiUrl, itemPath, toFilename, downloadByAjax, forceNewWindow) {
+            console.log(apiUrl,' ', itemPath, ' ', toFilename, ' ', downloadByAjax, ' ', forceNewWindow);
             var self = this;
             var url = this.getUrl(apiUrl, itemPath);
 

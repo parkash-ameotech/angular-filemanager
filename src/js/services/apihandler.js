@@ -226,6 +226,7 @@
         };
 
         ApiHandler.prototype.download = function(apiUrl, itemPath, toFilename, downloadByAjax, forceNewWindow) {
+            console.log(apiUrl,' ', itemPath, ' ', toFilename, ' ', downloadByAjax, ' ', forceNewWindow);
             var self = this;
             var url = this.getUrl(apiUrl, itemPath);
 
