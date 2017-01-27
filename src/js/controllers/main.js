@@ -329,7 +329,9 @@
         };
 
         $scope.removeFromUpload = function(index) {
-            $scope.uploadFileList.splice(index, 1);
+            $scope.apiMiddleware.remove($scope.uploadFileList[index]).then(function() {
+                $scope.uploadFileList.splice(index, 1);
+            });
         };
 
         $scope.uploadFiles = function() {
