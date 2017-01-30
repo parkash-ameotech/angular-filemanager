@@ -388,8 +388,7 @@
         };
 
         $scope.removeFromUpload = function(index) {
-            console.log(index);
-            $scope.apiMiddleware.remove($scope.uploadFileList[index]).then(function() {
+            $scope.apiMiddleware.removeFromUploadForm($scope.uploadFileList[index]).then(function() {
                 $scope.uploadFileList.splice(index, 1);
             });
         };
@@ -3971,6 +3970,10 @@ module
         ApiMiddleware.prototype.remove = function(files) {
             var items = this.getFileList(files);
             return this.apiHandler.remove(fileManagerConfig.removeUrl, items);
+        };
+
+        ApiMiddleware.prototype.removeFromUploadForm = function(file) {
+            return this.apiHandler.remove(fileManagerConfig.removeFromUploadFormUrl, file);
         };
 
         ApiMiddleware.prototype.upload = function(files, path) {
