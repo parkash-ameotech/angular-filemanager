@@ -335,16 +335,17 @@
         };
 
         $scope.uploadFiles = function() {
-            console.log($scope.uploadFileList);
-            console.log($scope.fileNavigator.currentPath);
-            $scope.apiMiddleware.upload($scope.uploadFileList, $scope.fileNavigator.currentPath).then(function() {
+            $scope.fileNavigator.refresh();
+            $scope.uploadFileList = [];
+            $scope.modal('uploadfile', true);
+            /*$scope.apiMiddleware.upload($scope.uploadFileList, $scope.fileNavigator.currentPath).then(function() {
                 $scope.fileNavigator.refresh();
                 $scope.uploadFileList = [];
                 $scope.modal('uploadfile', true);
             }, function(data) {
                 var errorMsg = data.result && data.result.error || $translate.instant('error_uploading_files');
                 $scope.apiMiddleware.apiHandler.error = errorMsg;
-            });
+            });*/
         };
 
         var validateSamePath = function(item) {
