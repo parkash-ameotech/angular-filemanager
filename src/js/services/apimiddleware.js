@@ -41,6 +41,10 @@
             return this.apiHandler.remove(fileManagerConfig.removeUrl, items);
         };
 
+        ApiMiddleware.prototype.removeFromUploadForm = function(file) {
+            return this.apiHandler.remove(fileManagerConfig.removeFromUploadFormUrl, file);
+        };
+
         ApiMiddleware.prototype.upload = function(files, path) {
             if (! $window.FormData) {
                 throw new Error('Unsupported browser version');

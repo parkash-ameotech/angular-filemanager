@@ -329,7 +329,7 @@
         };
 
         $scope.removeFromUpload = function(index) {
-            $scope.apiMiddleware.remove($scope.uploadFileList[index]).then(function() {
+            $scope.apiMiddleware.removeFromUploadForm($scope.uploadFileList[index]).then(function() {
                 $scope.uploadFileList.splice(index, 1);
             });
         };
