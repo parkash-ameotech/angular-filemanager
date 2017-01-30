@@ -335,8 +335,8 @@
             </div>
             <div class="modal-footer">
               <div>
-                  <button type="button" class="btn crm-orange" data-dismiss="modal">{{"cancel" | translate}}</button>
-                  <button type="submit" class="btn crm-green" ng-disabled="!$parent.uploadFileList.length || apiMiddleware.apiHandler.inprocess">{{'upload' | translate}}</button>
+                  <button type="button" class="btn crm-orange" data-dismiss="modal" ng-show="!$parent.uploadFileList.length">{{"cancel" | translate}}</button>
+                  <button type="submit" class="btn crm-green" ng-disabled="apiMiddleware.apiHandler.inprocess" ng-hide="!$parent.uploadFileList.length">{{'upload' | translate}}</button>
               </div>
             </div>
         </form>
