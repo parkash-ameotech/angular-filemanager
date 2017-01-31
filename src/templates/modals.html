@@ -33,19 +33,15 @@
         </button>
         <h4 class="modal-title">{{"confirm" | translate}}</h4>
       </div>
-      <div class="modal-body" ng-if="{{singleSelection().model.name != '.Private'}}">
-        {{'sure_to_delete' | translate}} <span ng-include data-src="'selected-files-msg'"></span>
-
+      <div class="modal-body">
+          <span ng-if="singleSelection().model.name != '.Private'">{{'sure_to_delete' | translate}}</span>
+          <span ng-if="singleSelection().model.name == '.Private'">You cannot delete</span>
+          <span ng-include data-src="'selected-files-msg'"></span>
         <div ng-include data-src="'error-bar'" class="clearfix"></div>
       </div>
-        <div class="modal-body" ng-if="{{singleSelection().model.name == '.Private'}}">
-            You can't delete <span ng-include data-src="'selected-files-msg'"></span>
-
-            <div ng-include data-src="'error-bar'" class="clearfix"></div>
-        </div>
       <div class="modal-footer">
         <button type="button" class="btn crm-orange" data-dismiss="modal" ng-disabled="apiMiddleware.apiHandler.inprocess">{{"cancel" | translate}}</button>
-        <button type="submit" class="btn crm-green" ng-disabled="apiMiddleware.apiHandler.inprocess" autofocus="autofocus" ng-if="{{singleSelection().model.name != '.Private'}}">{{"remove" | translate}}</button>
+        <button type="submit" class="btn crm-green" ng-disabled="apiMiddleware.apiHandler.inprocess" autofocus="autofocus" ng-if="singleSelection().model.name != '.Private'">{{"remove" | translate}}</button>
       </div>
       </form>
     </div>
