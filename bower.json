@@ -19,9 +19,7 @@
     "tests"
   ],
   "dependencies": {
-
     "angular-translate": "~2.9.1",
-
     "bootswatch": "3.3.6+1"
   }
 }
