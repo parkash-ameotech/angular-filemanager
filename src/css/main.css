@@ -30,12 +30,12 @@ body {
   background-color: #FAFAFA;
 }
 
-.btn {
+/*.btn {
   box-shadow: 0 2px 5px 0 rgba(0, 0, 0, .26);
   font-weight: 500;
   letter-spacing: .01em;
   border: none;
-}
+}*/
 
 textarea.code {
   font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
