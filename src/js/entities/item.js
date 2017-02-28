@@ -7,6 +7,7 @@
                 name: model && model.name || '',
                 path: path || [],
                 type: model && model.type || 'file',
+                id: model && model.id || '',
                 size: model && parseInt(model.size || 0),
                 date: parseMySQLDate(model && model.date),
                 perms: new Chmod(model && model.rights),
