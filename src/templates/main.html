@@ -1,4 +1,5 @@
-<div ng-controller="FileManagerCtrl" ngf-drop="addForUpload($files)" ngf-drag-over-class="'upload-dragover'" ngf-multiple="true">
+<!--<div ng-controller="FileManagerCtrl" ngf-drop="addForUpload($files)" ngf-drag-over-class="'upload-dragover'" ngf-multiple="true">-->
+<div ng-controller="FileManagerCtrl" nv-file-drop="" uploader="uploader" filters="queueLimit, customFilter" nv-file-over="" ngf-drag-over-class="'upload-dragover'" ngf-multiple="true">
     <div ng-include="config.tplPath + '/navbar.html'"></div>
 
     <div class="container-fluid">

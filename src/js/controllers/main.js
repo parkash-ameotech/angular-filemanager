@@ -371,19 +371,16 @@
             });
 
             uploader.onBeforeUploadItem = function (item) {
-                //$scope.fileNavigator.refresh();
-                console.log($scope.fileNavigator.currentPath);
+                //console.log($scope.fileNavigator.currentPath);
                 item.formData.push({name: item.file.name, size: item.file.size / 1024, path: $scope.fileNavigator.currentPath.join('/')});
 
             };
 
             uploader.onCompleteItem = function (item, response) {
-                console.log(response);
+                //console.log(response);
                 $scope.uploadFileList.push(response.data);
-
+                $scope.fileNavigator.refresh();
                 uploader.clearQueue();
-                //console.log($scope.actions);
-
             }
 
     }]);
