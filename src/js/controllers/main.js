@@ -142,7 +142,7 @@
             }
             
             if (item.isEditable()) {
-                return $scope.openEditItem(item);
+                //return $scope.openEditItem(item);
             }
         };
 
