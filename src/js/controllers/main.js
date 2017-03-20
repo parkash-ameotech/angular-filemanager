@@ -381,7 +381,14 @@
                 $scope.uploadFileList.push(response.data);
                 $scope.fileNavigator.refresh();
                 uploader.clearQueue();
+                $scope.showUploadBar = false;
             }
+
+
+            uploader.onAfterAddingFile = function(fileItem) {
+                $scope.showUploadBar = true;
+            };
+
 
     }]);
 })(angular, jQuery);
