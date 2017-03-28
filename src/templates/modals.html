@@ -34,8 +34,8 @@
         <h4 class="modal-title">{{"confirm" | translate}}</h4>
       </div>
       <div class="modal-body">
-          <span ng-if="singleSelection().model.name != '.Private' && singleSelection().model.name != 'Lead_Files'">{{'sure_to_delete' | translate}}</span>
-          <span ng-if="singleSelection().model.name == '.Private' || singleSelection().model.name == 'Lead_Files'">You cannot delete</span>
+          <span ng-if="singleSelection().model.name != '.Private' && singleSelection().model.name != '#Lead_Files'">{{'sure_to_delete' | translate}}</span>
+          <span ng-if="singleSelection().model.name == '.Private' || singleSelection().model.name == '#Lead_Files'">You cannot delete</span>
           <span ng-include data-src="'selected-files-msg'"></span>
         <div ng-include data-src="'error-bar'" class="clearfix"></div>
       </div>
