@@ -581,7 +581,7 @@ table th > a:focus {
   }
 
   /* The view should fill all available vertical space */
-  angular-filemanager > div,.row,.main,.sidebar {
+  angular-filemanager > div,angular-filemanager > .row,angular-filemanager > .main,angular-filemanager > .sidebar {
     height: 100%;
   }
 
