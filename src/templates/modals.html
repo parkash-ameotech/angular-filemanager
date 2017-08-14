@@ -41,7 +41,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn crm-orange" data-dismiss="modal" ng-disabled="apiMiddleware.apiHandler.inprocess">{{"cancel" | translate}}</button>
-        <button type="submit" class="btn crm-green" ng-disabled="apiMiddleware.apiHandler.inprocess" autofocus="autofocus" ng-if="singleSelection().model.name != '.Private'">{{"remove" | translate}}</button>
+        <button type="submit" class="btn crm-green" ng-disabled="apiMiddleware.apiHandler.inprocess" autofocus="autofocus" ng-if="singleSelection().model.name != '.Private' && singleSelection().model.name != '$Lead_Files'">{{"remove" | translate}}</button>
       </div>
       </form>
     </div>
