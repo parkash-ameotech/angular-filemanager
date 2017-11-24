@@ -383,7 +383,7 @@
             };
 
             uploader.onCompleteItem = function (item, response) {
-                $interval.cancel(timerId);
+                $interval.cancel(timerDot);
                 $scope.fileNavigator.waitRecord = '';
                 if (response.status != 'ERROR') {
                     $scope.uploadFileList.push(response.data);
