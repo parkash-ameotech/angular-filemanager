@@ -365,7 +365,7 @@
         $scope.isWindows = getQueryParam('server') === 'Windows';
         $scope.fileNavigator.refresh();
 
-            var timerDot
+            var timerDot;
             var uploader = $scope.uploader = new FileUploader({
                 url: '/api/filemanager/uploadUrl',
                 autoUpload: true
