@@ -2,9 +2,9 @@
     'use strict';
     angular.module('FileManagerApp').controller('FileManagerCtrl', [
         '$scope', '$rootScope', '$window', '$translate', 'fileManagerConfig', 'item', 'fileNavigator', 'apiMiddleware',
-        'FileUploader',
+        'FileUploader','$interval',
         function($scope, $rootScope, $window, $translate, fileManagerConfig, Item, FileNavigator, ApiMiddleware
-            ,FileUploader
+            ,FileUploader,$interval
         ) {
 
         var $storage = $window.localStorage;
@@ -365,6 +365,7 @@
         $scope.isWindows = getQueryParam('server') === 'Windows';
         $scope.fileNavigator.refresh();
 
+            var timerDot
             var uploader = $scope.uploader = new FileUploader({
                 url: '/api/filemanager/uploadUrl',
                 autoUpload: true
@@ -372,13 +373,18 @@
 
             uploader.onBeforeUploadItem = function (item) {
                 //console.log($scope.fileNavigator.currentPath);
-                $scope.fileNavigator.showWaiting();
+                $scope.fileNavigator.waitRecord = 'Waiting';
+                timerDot = $interval(function() {
+                    $scope.fileNavigator.waitRecord = $scope.fileNavigator.waitRecord +'.';
+                    if ($scope.fileNavigator.waitRecord.length > 80) $scope.fileNavigator.waitRecord = 'Waiting';
+                }, 500);
                 item.formData.push({name: item.file.name, size: item.file.size / 1024, path: $scope.fileNavigator.currentPath.join('/')});
 
             };
 
             uploader.onCompleteItem = function (item, response) {
-                $scope.fileNavigator.hideWaiting();
+                $interval.cancel(timerId);
+                $scope.fileNavigator.waitRecord = '';
                 if (response.status != 'ERROR') {
                     $scope.uploadFileList.push(response.data);
                     $scope.fileNavigator.refresh();

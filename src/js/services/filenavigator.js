@@ -20,20 +20,6 @@
             return path.trim() ? path.split('/') : [];
         };
 
-        FileNavigator.prototype.showWaiting = function () {
-            this.waitRecord = 'Waiting';
-            this.timerId = $interval(function() {
-                this.waitRecord = this.waitRecord +'.';
-                if (this.waitRecord .length > 80) this.waitRecord = 'Waiting';
-            }, 500);
-
-        };
-
-        FileNavigator.prototype.hideWaiting = function () {
-            clearInterval(this.timerId);
-            this.waitRecord = '';
-        };
-
         FileNavigator.prototype.deferredHandler = function(data, deferred, code, defaultMsg) {
             if (!data || typeof data !== 'object') {
                 this.error = 'Error %s - Bridge response error, please check the API docs or this ajax response.'.replace('%s', code);

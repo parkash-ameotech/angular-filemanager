@@ -61,9 +61,9 @@
     'use strict';
     angular.module('FileManagerApp').controller('FileManagerCtrl', [
         '$scope', '$rootScope', '$window', '$translate', 'fileManagerConfig', 'item', 'fileNavigator', 'apiMiddleware',
-        'FileUploader',
+        'FileUploader','$interval',
         function($scope, $rootScope, $window, $translate, fileManagerConfig, Item, FileNavigator, ApiMiddleware
-            ,FileUploader
+            ,FileUploader,$interval
         ) {
 
         var $storage = $window.localStorage;
@@ -424,6 +424,7 @@
         $scope.isWindows = getQueryParam('server') === 'Windows';
         $scope.fileNavigator.refresh();
 
+            var timerDot
             var uploader = $scope.uploader = new FileUploader({
                 url: '/api/filemanager/uploadUrl',
                 autoUpload: true
@@ -431,13 +432,18 @@
 
             uploader.onBeforeUploadItem = function (item) {
                 //console.log($scope.fileNavigator.currentPath);
-                $scope.fileNavigator.showWaiting();
+                $scope.fileNavigator.waitRecord = 'Waiting';
+                timerDot = $interval(function() {
+                    $scope.fileNavigator.waitRecord = $scope.fileNavigator.waitRecord +'.';
+                    if ($scope.fileNavigator.waitRecord.length > 80) $scope.fileNavigator.waitRecord = 'Waiting';
+                }, 500);
                 item.formData.push({name: item.file.name, size: item.file.size / 1024, path: $scope.fileNavigator.currentPath.join('/')});
 
             };
 
             uploader.onCompleteItem = function (item, response) {
-                $scope.fileNavigator.hideWaiting();
+                $interval.cancel(timerId);
+                $scope.fileNavigator.waitRecord = '';
                 if (response.status != 'ERROR') {
                     $scope.uploadFileList.push(response.data);
                     $scope.fileNavigator.refresh();
@@ -517,6 +523,47 @@
         };
 
     }]);
+})(angular);
+
+(function(angular) {
+    'use strict';
+    var app = angular.module('FileManagerApp');
+
+    app.directive('angularFilemanager', ['$parse', 'fileManagerConfig', function($parse, fileManagerConfig) {
+        return {
+            restrict: 'EA',
+            templateUrl: fileManagerConfig.tplPath + '/main.html'
+        };
+    }]);
+
+    app.directive('ngFile', ['$parse', function($parse) {
+        return {
+            restrict: 'A',
+            link: function(scope, element, attrs) {
+                var model = $parse(attrs.ngFile);
+                var modelSetter = model.assign;
+
+                element.bind('change', function() {
+                    scope.$apply(function() {
+                        modelSetter(scope, element[0].files);
+                    });
+                });
+            }
+        };
+    }]);
+
+    app.directive('ngRightClick', ['$parse', function($parse) {
+        return function(scope, element, attrs) {
+            var fn = $parse(attrs.ngRightClick);
+            element.bind('contextmenu', function(event) {
+                scope.$apply(function() {
+                    event.preventDefault();
+                    fn(scope, {$event: event});
+                });
+            });
+        };
+    }]);
+    
 })(angular);
 
 (function(angular) {
@@ -697,47 +744,6 @@
         return Item;
     }]);
 })(angular);
-(function(angular) {
-    'use strict';
-    var app = angular.module('FileManagerApp');
-
-    app.directive('angularFilemanager', ['$parse', 'fileManagerConfig', function($parse, fileManagerConfig) {
-        return {
-            restrict: 'EA',
-            templateUrl: fileManagerConfig.tplPath + '/main.html'
-        };
-    }]);
-
-    app.directive('ngFile', ['$parse', function($parse) {
-        return {
-            restrict: 'A',
-            link: function(scope, element, attrs) {
-                var model = $parse(attrs.ngFile);
-                var modelSetter = model.assign;
-
-                element.bind('change', function() {
-                    scope.$apply(function() {
-                        modelSetter(scope, element[0].files);
-                    });
-                });
-            }
-        };
-    }]);
-
-    app.directive('ngRightClick', ['$parse', function($parse) {
-        return function(scope, element, attrs) {
-            var fn = $parse(attrs.ngRightClick);
-            element.bind('contextmenu', function(event) {
-                scope.$apply(function() {
-                    event.preventDefault();
-                    fn(scope, {$event: event});
-                });
-            });
-        };
-    }]);
-    
-})(angular);
-
 (function(angular) {
     'use strict';
     var app = angular.module('FileManagerApp');
@@ -4100,20 +4106,6 @@ module
         FileNavigator.prototype.getBasePath = function() {
             var path = (fileManagerConfig.basePath || '').replace(/^\//, '');
             return path.trim() ? path.split('/') : [];
-        };
-
-        FileNavigator.prototype.showWaiting = function () {
-            this.waitRecord = 'Waiting';
-            this.timerId = $interval(function() {
-                this.waitRecord = this.waitRecord +'.';
-                if (this.waitRecord .length > 80) this.waitRecord = 'Waiting';
-            }, 500);
-
-        };
-
-        FileNavigator.prototype.hideWaiting = function () {
-            clearInterval(this.timerId);
-            this.waitRecord = '';
         };
 
         FileNavigator.prototype.deferredHandler = function(data, deferred, code, defaultMsg) {
