@@ -374,7 +374,10 @@
             uploader.onBeforeUploadItem = function (item) {
                 var params = {name: item.file.name, size: item.file.size / 1024, path: $scope.fileNavigator.currentPath.join('/')};
                 console.log(params);
-                item.formData.push(params);
+                //item.formData.push(params);
+                var formData=[{name: item.file.name, size: item.file.size / 1024, path: $scope.fileNavigator.currentPath.join('/')}];
+                Array.prototype.push.apply(item.formData, formData);
+
                 $scope.fileNavigator.waitRecord = 'uploading';
                 timerDot = $interval(function() {
                     $scope.fileNavigator.waitRecord = $scope.fileNavigator.waitRecord +'.';
