@@ -1,7 +1,7 @@
 (function(angular) {
     'use strict';
     angular.module('FileManagerApp').service('fileNavigator', [
-        'apiMiddleware', 'fileManagerConfig', 'item', function (ApiMiddleware, fileManagerConfig, Item) {
+        'apiMiddleware', 'fileManagerConfig', 'item','$interval', function (ApiMiddleware, fileManagerConfig, Item, $interval) {
 
         var FileNavigator = function() {
             this.apiMiddleware = new ApiMiddleware();
@@ -10,6 +10,7 @@
             this.currentPath = this.getBasePath();
             this.history = [];
             this.error = '';
+            this.waitRecord = '';
 
             this.onRefresh = function() {};
         };
@@ -17,6 +18,20 @@
         FileNavigator.prototype.getBasePath = function() {
             var path = (fileManagerConfig.basePath || '').replace(/^\//, '');
             return path.trim() ? path.split('/') : [];
+        };
+
+        FileNavigator.prototype.showWaiting = function () {
+            this.waitRecord = 'Waiting';
+            this.timerId = $interval(function() {
+                this.waitRecord = this.waitRecord +'.';
+                if (this.waitRecord .length > 80) this.waitRecord = 'Waiting';
+            }, 500);
+
+        };
+
+        FileNavigator.prototype.hideWaiting = function () {
+            clearInterval(this.timerId);
+            this.waitRecord = '';
         };
 
         FileNavigator.prototype.deferredHandler = function(data, deferred, code, defaultMsg) {
