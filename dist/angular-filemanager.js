@@ -436,11 +436,17 @@
             };
 
             uploader.onCompleteItem = function (item, response) {
-                //console.log(response);
-                $scope.uploadFileList.push(response.data);
-                $scope.fileNavigator.refresh();
-                uploader.clearQueue();
-                $scope.showUploadBar = false;
+                if (response.status != 'ERROR') {
+                    $scope.uploadFileList.push(response.data);
+                    $scope.fileNavigator.refresh();
+                    uploader.clearQueue();
+                    $scope.showUploadBar = false;
+                } else {
+                    var errorMsg = response.message;
+                    $scope.apiMiddleware.apiHandler.error = errorMsg;
+                    uploader.clearQueue();
+                    $scope.showUploadBar = false;
+                }
             }
 
 
