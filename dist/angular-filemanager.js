@@ -431,11 +431,13 @@
 
             uploader.onBeforeUploadItem = function (item) {
                 //console.log($scope.fileNavigator.currentPath);
+                $scope.fileNavigator.showWaiting();
                 item.formData.push({name: item.file.name, size: item.file.size / 1024, path: $scope.fileNavigator.currentPath.join('/')});
 
             };
 
             uploader.onCompleteItem = function (item, response) {
+                $scope.fileNavigator.hideWaiting();
                 if (response.status != 'ERROR') {
                     $scope.uploadFileList.push(response.data);
                     $scope.fileNavigator.refresh();
