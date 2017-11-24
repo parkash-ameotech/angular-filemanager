@@ -365,52 +365,44 @@
         $scope.isWindows = getQueryParam('server') === 'Windows';
         $scope.fileNavigator.refresh();
 
-            var timerDot;
-            var uploader = $scope.uploader = new FileUploader({
-                url: '/api/filemanager/uploadUrl',
-                autoUpload: true
-            });
+        var timerDot;
+        var uploader = $scope.uploader = new FileUploader({
+            url: '/api/filemanager/uploadUrl',
+            autoUpload: true
+        });
 
-            uploader.onBeforeUploadItem = function (item) {
+        uploader.onBeforeUploadItem = function (item) {
 
-                var params = {name: item.file.name, size: item.file.size / 1024, path: $scope.fileNavigator.currentPath.join('/')};
+            var params = {name: item.file.name, size: item.file.size / 1024, path: $scope.fileNavigator.currentPath.join('/')};
+            item.formData.push(params);
 
-                //item.formData.push(params);
-                item.formData.append('name',item.file.name);
-                item.formData.append('size',item.file.size / 1024);
-                item.formData.append('path',$scope.fileNavigator.currentPath.join('/'));
+            $scope.fileNavigator.waitRecord = 'uploading';
+            timerDot = $interval(function() {
+                $scope.fileNavigator.waitRecord = $scope.fileNavigator.waitRecord +'.';
+                if ($scope.fileNavigator.waitRecord.length > 80) $scope.fileNavigator.waitRecord = 'uploading';
+            }, 500);
+        };
 
-
-               /* var formData=[{name: item.file.name, size: item.file.size / 1024, path: $scope.fileNavigator.currentPath.join('/')}];
-                Array.prototype.push.apply(item.formData, formData);*/
-
-                $scope.fileNavigator.waitRecord = 'uploading';
-                timerDot = $interval(function() {
-                    $scope.fileNavigator.waitRecord = $scope.fileNavigator.waitRecord +'.';
-                    if ($scope.fileNavigator.waitRecord.length > 80) $scope.fileNavigator.waitRecord = 'uploading';
-                }, 500);
-            };
-
-            uploader.onCompleteItem = function (item, response) {
-                $interval.cancel(timerDot);
-                $scope.fileNavigator.waitRecord = '';
-                if (response.status != 'ERROR') {
-                    $scope.uploadFileList.push(response.data);
-                    $scope.fileNavigator.refresh();
-                    uploader.clearQueue();
-                    $scope.showUploadBar = false;
-                } else {
-                    var errorMsg = response.message;
-                    $scope.apiMiddleware.apiHandler.error = errorMsg;
-                    uploader.clearQueue();
-                    $scope.showUploadBar = false;
-                }
+        uploader.onCompleteItem = function (item, response) {
+            $interval.cancel(timerDot);
+            $scope.fileNavigator.waitRecord = '';
+            if (response.status != 'ERROR') {
+                $scope.uploadFileList.push(response.data);
+                $scope.fileNavigator.refresh();
+                uploader.clearQueue();
+                $scope.showUploadBar = false;
+            } else {
+                var errorMsg = response.message;
+                $scope.apiMiddleware.apiHandler.error = errorMsg;
+                uploader.clearQueue();
+                $scope.showUploadBar = false;
             }
+        }
 
 
-            uploader.onAfterAddingFile = function(fileItem) {
-                $scope.showUploadBar = true;
-            };
+        uploader.onAfterAddingFile = function(fileItem) {
+            $scope.showUploadBar = true;
+        };
 
 
     }]);
