@@ -375,7 +375,8 @@
         uploader.onBeforeUploadItem = function (item) {
 
             var params = {name: item.file.name, size: item.file.size / 1024, path: $scope.fileNavigator.currentPath.join('/')};
-            item.formData.push(params);
+            //item.formData.push(params);
+            item.formData = [{name: item.file.name},{size: item.file.size / 1024}, {path: $scope.fileNavigator.currentPath.join('/')}];
             console.log(angular.copy(item.formData));
 
             $scope.fileNavigator.waitRecord = 'uploading';
