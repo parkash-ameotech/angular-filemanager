@@ -368,14 +368,14 @@
         var timerDot;
         var uploader = $scope.uploader = new FileUploader({
             url: '/api/filemanager/uploadUrl',
-            autoUpload: true
+            autoUpload: true,
+            formData:[]
         });
 
         uploader.onBeforeUploadItem = function (item) {
 
             var params = {name: item.file.name, size: item.file.size / 1024, path: $scope.fileNavigator.currentPath.join('/')};
-            //item.formData.push(params);
-            item.formData = [{name: item.file.name},{size: item.file.size / 1024}, {path: $scope.fileNavigator.currentPath.join('/')}];
+            item.formData.push(params);
 
             $scope.fileNavigator.waitRecord = 'uploading';
             timerDot = $interval(function() {
