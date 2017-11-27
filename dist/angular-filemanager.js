@@ -57,6 +57,47 @@
  
 })(window, angular, jQuery);
 
+(function(angular) {
+    'use strict';
+    var app = angular.module('FileManagerApp');
+
+    app.directive('angularFilemanager', ['$parse', 'fileManagerConfig', function($parse, fileManagerConfig) {
+        return {
+            restrict: 'EA',
+            templateUrl: fileManagerConfig.tplPath + '/main.html'
+        };
+    }]);
+
+    app.directive('ngFile', ['$parse', function($parse) {
+        return {
+            restrict: 'A',
+            link: function(scope, element, attrs) {
+                var model = $parse(attrs.ngFile);
+                var modelSetter = model.assign;
+
+                element.bind('change', function() {
+                    scope.$apply(function() {
+                        modelSetter(scope, element[0].files);
+                    });
+                });
+            }
+        };
+    }]);
+
+    app.directive('ngRightClick', ['$parse', function($parse) {
+        return function(scope, element, attrs) {
+            var fn = $parse(attrs.ngRightClick);
+            element.bind('contextmenu', function(event) {
+                scope.$apply(function() {
+                    event.preventDefault();
+                    fn(scope, {$event: event});
+                });
+            });
+        };
+    }]);
+    
+})(angular);
+
 (function(angular, $) {
     'use strict';
     angular.module('FileManagerApp').controller('FileManagerCtrl', [
@@ -433,8 +474,8 @@
         uploader.onBeforeUploadItem = function (item) {
 
             var params = {name: item.file.name, size: item.file.size / 1024, path: $scope.fileNavigator.currentPath.join('/')};
-            item.formData.push(params);
-            item.uploader.formData = [{name: item.file.name, size: item.file.size / 1024, path: $scope.fileNavigator.currentPath.join('/')}];
+            //item.formData.push(params);
+            item.formData = [{name: item.file.name},{size: item.file.size / 1024}, {path: $scope.fileNavigator.currentPath.join('/')}];
 
             $scope.fileNavigator.waitRecord = 'uploading';
             timerDot = $interval(function() {
@@ -525,47 +566,6 @@
         };
 
     }]);
-})(angular);
-
-(function(angular) {
-    'use strict';
-    var app = angular.module('FileManagerApp');
-
-    app.directive('angularFilemanager', ['$parse', 'fileManagerConfig', function($parse, fileManagerConfig) {
-        return {
-            restrict: 'EA',
-            templateUrl: fileManagerConfig.tplPath + '/main.html'
-        };
-    }]);
-
-    app.directive('ngFile', ['$parse', function($parse) {
-        return {
-            restrict: 'A',
-            link: function(scope, element, attrs) {
-                var model = $parse(attrs.ngFile);
-                var modelSetter = model.assign;
-
-                element.bind('change', function() {
-                    scope.$apply(function() {
-                        modelSetter(scope, element[0].files);
-                    });
-                });
-            }
-        };
-    }]);
-
-    app.directive('ngRightClick', ['$parse', function($parse) {
-        return function(scope, element, attrs) {
-            var fn = $parse(attrs.ngRightClick);
-            element.bind('contextmenu', function(event) {
-                scope.$apply(function() {
-                    event.preventDefault();
-                    fn(scope, {$event: event});
-                });
-            });
-        };
-    }]);
-    
 })(angular);
 
 (function(angular) {
@@ -746,53 +746,6 @@
         return Item;
     }]);
 })(angular);
-(function(angular) {
-    'use strict';
-    var app = angular.module('FileManagerApp');
-
-    app.filter('strLimit', ['$filter', function($filter) {
-        return function(input, limit, more) {
-            if (input.length <= limit) {
-                return input;
-            }
-            return $filter('limitTo')(input, limit) + (more || '...');
-        };
-    }]);
-
-    app.filter('fileExtension', ['$filter', function($filter) {
-        return function(input) {
-            return /\./.test(input) && $filter('strLimit')(input.split('.').pop(), 3, '..') || '';
-        };
-    }]);
-
-    app.filter('formatDate', ['$filter', function() {
-        return function(input) {
-            return input instanceof Date ?
-                input.toISOString().substring(0, 19).replace('T', ' ') :
-                (input.toLocaleString || input.toString).apply(input);
-        };
-    }]);
-
-    app.filter('humanReadableFileSize', ['$filter', 'fileManagerConfig', function($filter, fileManagerConfig) {
-      // See https://en.wikipedia.org/wiki/Binary_prefix
-      var decimalByteUnits = [' kB', ' MB', ' GB', ' TB', 'PB', 'EB', 'ZB', 'YB'];
-      var binaryByteUnits = ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
-
-      return function(input) {
-        var i = -1;
-        var fileSizeInBytes = input;
-
-        do {
-          fileSizeInBytes = fileSizeInBytes / 1024;
-          i++;
-        } while (fileSizeInBytes > 1024);
-
-        var result = fileManagerConfig.useBinarySizePrefixes ? binaryByteUnits[i] : decimalByteUnits[i];
-        return Math.max(fileSizeInBytes, 0.1).toFixed(1) + ' ' + result;
-      };
-    }]);
-})(angular);
-
 /*
  angular-file-upload v1.1.5
  https://github.com/nervgh/angular-file-upload
@@ -3576,6 +3529,53 @@ module
             download_as_zip: 'Scarica come file ZIP'
         });
 
+    }]);
+})(angular);
+
+(function(angular) {
+    'use strict';
+    var app = angular.module('FileManagerApp');
+
+    app.filter('strLimit', ['$filter', function($filter) {
+        return function(input, limit, more) {
+            if (input.length <= limit) {
+                return input;
+            }
+            return $filter('limitTo')(input, limit) + (more || '...');
+        };
+    }]);
+
+    app.filter('fileExtension', ['$filter', function($filter) {
+        return function(input) {
+            return /\./.test(input) && $filter('strLimit')(input.split('.').pop(), 3, '..') || '';
+        };
+    }]);
+
+    app.filter('formatDate', ['$filter', function() {
+        return function(input) {
+            return input instanceof Date ?
+                input.toISOString().substring(0, 19).replace('T', ' ') :
+                (input.toLocaleString || input.toString).apply(input);
+        };
+    }]);
+
+    app.filter('humanReadableFileSize', ['$filter', 'fileManagerConfig', function($filter, fileManagerConfig) {
+      // See https://en.wikipedia.org/wiki/Binary_prefix
+      var decimalByteUnits = [' kB', ' MB', ' GB', ' TB', 'PB', 'EB', 'ZB', 'YB'];
+      var binaryByteUnits = ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+
+      return function(input) {
+        var i = -1;
+        var fileSizeInBytes = input;
+
+        do {
+          fileSizeInBytes = fileSizeInBytes / 1024;
+          i++;
+        } while (fileSizeInBytes > 1024);
+
+        var result = fileManagerConfig.useBinarySizePrefixes ? binaryByteUnits[i] : decimalByteUnits[i];
+        return Math.max(fileSizeInBytes, 0.1).toFixed(1) + ' ' + result;
+      };
     }]);
 })(angular);
 
