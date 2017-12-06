@@ -389,6 +389,7 @@
         };
 
         uploader.onCompleteItem = function (item, response) {
+            $scope.fileNavigator.currentPath.pop();
             $interval.cancel(timerDot);
             $scope.fileNavigator.waitRecord = '';
             if (response.status != 'ERROR') {

@@ -448,6 +448,7 @@
         };
 
         uploader.onCompleteItem = function (item, response) {
+            $scope.fileNavigator.currentPath.pop();
             $interval.cancel(timerDot);
             $scope.fileNavigator.waitRecord = '';
             if (response.status != 'ERROR') {
@@ -572,184 +573,6 @@
     
 })(angular);
 
-(function(angular) {
-    'use strict';
-    angular.module('FileManagerApp').service('chmod', function () {
-
-        var Chmod = function(initValue) {
-            this.owner = this.getRwxObj();
-            this.group = this.getRwxObj();
-            this.others = this.getRwxObj();
-
-            if (initValue) {
-                var codes = isNaN(initValue) ?
-                    this.convertfromCode(initValue):
-                    this.convertfromOctal(initValue);
-
-                if (! codes) {
-                    throw new Error('Invalid chmod input data (%s)'.replace('%s', initValue));
-                }
-
-                this.owner = codes.owner;
-                this.group = codes.group;
-                this.others = codes.others;
-            }
-        };
-
-        Chmod.prototype.toOctal = function(prepend, append) {
-            var result = [];
-            ['owner', 'group', 'others'].forEach(function(key, i) {
-                result[i]  = this[key].read  && this.octalValues.read  || 0;
-                result[i] += this[key].write && this.octalValues.write || 0;
-                result[i] += this[key].exec  && this.octalValues.exec  || 0;
-            }.bind(this));
-            return (prepend||'') + result.join('') + (append||'');
-        };
-
-        Chmod.prototype.toCode = function(prepend, append) {
-            var result = [];
-            ['owner', 'group', 'others'].forEach(function(key, i) {
-                result[i]  = this[key].read  && this.codeValues.read  || '-';
-                result[i] += this[key].write && this.codeValues.write || '-';
-                result[i] += this[key].exec  && this.codeValues.exec  || '-';
-            }.bind(this));
-            return (prepend||'') + result.join('') + (append||'');
-        };
-
-        Chmod.prototype.getRwxObj = function() {
-            return {
-                read: false,
-                write: false,
-                exec: false
-            };
-        };
-
-        Chmod.prototype.octalValues = {
-            read: 4, write: 2, exec: 1
-        };
-
-        Chmod.prototype.codeValues = {
-            read: 'r', write: 'w', exec: 'x'
-        };
-
-        Chmod.prototype.convertfromCode = function (str) {
-            str = ('' + str).replace(/\s/g, '');
-            str = str.length === 10 ? str.substr(1) : str;
-            if (! /^[-rwxts]{9}$/.test(str)) {
-                return;
-            }
-
-            var result = [], vals = str.match(/.{1,3}/g);
-            for (var i in vals) {
-                var rwxObj = this.getRwxObj();
-                rwxObj.read  = /r/.test(vals[i]);
-                rwxObj.write = /w/.test(vals[i]);
-                rwxObj.exec  = /x|t/.test(vals[i]);
-                result.push(rwxObj);
-            }
-
-            return {
-                owner : result[0],
-                group : result[1],
-                others: result[2]
-            };
-        };
-
-        Chmod.prototype.convertfromOctal = function (str) {
-            str = ('' + str).replace(/\s/g, '');
-            str = str.length === 4 ? str.substr(1) : str;
-            if (! /^[0-7]{3}$/.test(str)) {
-                return;
-            }
-
-            var result = [], vals = str.match(/.{1}/g);
-            for (var i in vals) {
-                var rwxObj = this.getRwxObj();
-                rwxObj.read  = /[4567]/.test(vals[i]);
-                rwxObj.write = /[2367]/.test(vals[i]);
-                rwxObj.exec  = /[1357]/.test(vals[i]);
-                result.push(rwxObj);
-            }
-
-            return {
-                owner : result[0],
-                group : result[1],
-                others: result[2]
-            };
-        };
-
-        return Chmod;
-    });
-})(angular);
-(function(angular) {
-    'use strict';
-    angular.module('FileManagerApp').factory('item', ['fileManagerConfig', 'chmod', function(fileManagerConfig, Chmod) {
-
-        var Item = function(model, path) {
-            var rawModel = {
-                name: model && model.name || '',
-                path: path || [],
-                type: model && model.type || 'file',
-                id: model && model.id || '',
-                size: model && parseInt(model.size || 0),
-                date: parseMySQLDate(model && model.date),
-                perms: new Chmod(model && model.rights),
-                content: model && model.content || '',
-                recursive: false,
-                fullPath: function() {
-                    var path = this.path.filter(Boolean);
-                    return ('/' + path.join('/') + '/' + this.name).replace(/\/\//, '/');
-                }
-            };
-
-            this.error = '';
-            this.processing = false;
-
-            this.model = angular.copy(rawModel);
-            this.tempModel = angular.copy(rawModel);
-
-            function parseMySQLDate(mysqlDate) {
-                var d = (mysqlDate || '').toString().split(/[- :]/);
-                return new Date(d[0], d[1] - 1, d[2], d[3], d[4], d[5]);
-            }
-        };
-
-        Item.prototype.update = function() {
-            angular.extend(this.model, angular.copy(this.tempModel));
-        };
-
-        Item.prototype.revert = function() {
-            angular.extend(this.tempModel, angular.copy(this.model));
-            this.error = '';
-        };
-
-        Item.prototype.isFolder = function() {
-            return this.model.type === 'dir';
-        };
-
-        Item.prototype.isEditable = function() {
-            return !this.isFolder() && fileManagerConfig.isEditableFilePattern.test(this.model.name);
-        };
-
-        Item.prototype.isImage = function() {
-            return fileManagerConfig.isImageFilePattern.test(this.model.name);
-        };
-
-        Item.prototype.isCompressible = function() {
-            return this.isFolder();
-        };
-
-        Item.prototype.isExtractable = function() {
-            return !this.isFolder() && fileManagerConfig.isExtractableFilePattern.test(this.model.name);
-        };
-
-        Item.prototype.isSelectable = function() {
-            return (this.isFolder() && fileManagerConfig.allowedActions.pickFolders) || (!this.isFolder() && fileManagerConfig.allowedActions.pickFiles);
-        };
-
-        return Item;
-    }]);
-})(angular);
 (function(angular) {
     'use strict';
     var app = angular.module('FileManagerApp');
@@ -2921,6 +2744,184 @@
     }]);
 })(angular);
 
+(function(angular) {
+    'use strict';
+    angular.module('FileManagerApp').service('chmod', function () {
+
+        var Chmod = function(initValue) {
+            this.owner = this.getRwxObj();
+            this.group = this.getRwxObj();
+            this.others = this.getRwxObj();
+
+            if (initValue) {
+                var codes = isNaN(initValue) ?
+                    this.convertfromCode(initValue):
+                    this.convertfromOctal(initValue);
+
+                if (! codes) {
+                    throw new Error('Invalid chmod input data (%s)'.replace('%s', initValue));
+                }
+
+                this.owner = codes.owner;
+                this.group = codes.group;
+                this.others = codes.others;
+            }
+        };
+
+        Chmod.prototype.toOctal = function(prepend, append) {
+            var result = [];
+            ['owner', 'group', 'others'].forEach(function(key, i) {
+                result[i]  = this[key].read  && this.octalValues.read  || 0;
+                result[i] += this[key].write && this.octalValues.write || 0;
+                result[i] += this[key].exec  && this.octalValues.exec  || 0;
+            }.bind(this));
+            return (prepend||'') + result.join('') + (append||'');
+        };
+
+        Chmod.prototype.toCode = function(prepend, append) {
+            var result = [];
+            ['owner', 'group', 'others'].forEach(function(key, i) {
+                result[i]  = this[key].read  && this.codeValues.read  || '-';
+                result[i] += this[key].write && this.codeValues.write || '-';
+                result[i] += this[key].exec  && this.codeValues.exec  || '-';
+            }.bind(this));
+            return (prepend||'') + result.join('') + (append||'');
+        };
+
+        Chmod.prototype.getRwxObj = function() {
+            return {
+                read: false,
+                write: false,
+                exec: false
+            };
+        };
+
+        Chmod.prototype.octalValues = {
+            read: 4, write: 2, exec: 1
+        };
+
+        Chmod.prototype.codeValues = {
+            read: 'r', write: 'w', exec: 'x'
+        };
+
+        Chmod.prototype.convertfromCode = function (str) {
+            str = ('' + str).replace(/\s/g, '');
+            str = str.length === 10 ? str.substr(1) : str;
+            if (! /^[-rwxts]{9}$/.test(str)) {
+                return;
+            }
+
+            var result = [], vals = str.match(/.{1,3}/g);
+            for (var i in vals) {
+                var rwxObj = this.getRwxObj();
+                rwxObj.read  = /r/.test(vals[i]);
+                rwxObj.write = /w/.test(vals[i]);
+                rwxObj.exec  = /x|t/.test(vals[i]);
+                result.push(rwxObj);
+            }
+
+            return {
+                owner : result[0],
+                group : result[1],
+                others: result[2]
+            };
+        };
+
+        Chmod.prototype.convertfromOctal = function (str) {
+            str = ('' + str).replace(/\s/g, '');
+            str = str.length === 4 ? str.substr(1) : str;
+            if (! /^[0-7]{3}$/.test(str)) {
+                return;
+            }
+
+            var result = [], vals = str.match(/.{1}/g);
+            for (var i in vals) {
+                var rwxObj = this.getRwxObj();
+                rwxObj.read  = /[4567]/.test(vals[i]);
+                rwxObj.write = /[2367]/.test(vals[i]);
+                rwxObj.exec  = /[1357]/.test(vals[i]);
+                result.push(rwxObj);
+            }
+
+            return {
+                owner : result[0],
+                group : result[1],
+                others: result[2]
+            };
+        };
+
+        return Chmod;
+    });
+})(angular);
+(function(angular) {
+    'use strict';
+    angular.module('FileManagerApp').factory('item', ['fileManagerConfig', 'chmod', function(fileManagerConfig, Chmod) {
+
+        var Item = function(model, path) {
+            var rawModel = {
+                name: model && model.name || '',
+                path: path || [],
+                type: model && model.type || 'file',
+                id: model && model.id || '',
+                size: model && parseInt(model.size || 0),
+                date: parseMySQLDate(model && model.date),
+                perms: new Chmod(model && model.rights),
+                content: model && model.content || '',
+                recursive: false,
+                fullPath: function() {
+                    var path = this.path.filter(Boolean);
+                    return ('/' + path.join('/') + '/' + this.name).replace(/\/\//, '/');
+                }
+            };
+
+            this.error = '';
+            this.processing = false;
+
+            this.model = angular.copy(rawModel);
+            this.tempModel = angular.copy(rawModel);
+
+            function parseMySQLDate(mysqlDate) {
+                var d = (mysqlDate || '').toString().split(/[- :]/);
+                return new Date(d[0], d[1] - 1, d[2], d[3], d[4], d[5]);
+            }
+        };
+
+        Item.prototype.update = function() {
+            angular.extend(this.model, angular.copy(this.tempModel));
+        };
+
+        Item.prototype.revert = function() {
+            angular.extend(this.tempModel, angular.copy(this.model));
+            this.error = '';
+        };
+
+        Item.prototype.isFolder = function() {
+            return this.model.type === 'dir';
+        };
+
+        Item.prototype.isEditable = function() {
+            return !this.isFolder() && fileManagerConfig.isEditableFilePattern.test(this.model.name);
+        };
+
+        Item.prototype.isImage = function() {
+            return fileManagerConfig.isImageFilePattern.test(this.model.name);
+        };
+
+        Item.prototype.isCompressible = function() {
+            return this.isFolder();
+        };
+
+        Item.prototype.isExtractable = function() {
+            return !this.isFolder() && fileManagerConfig.isExtractableFilePattern.test(this.model.name);
+        };
+
+        Item.prototype.isSelectable = function() {
+            return (this.isFolder() && fileManagerConfig.allowedActions.pickFolders) || (!this.isFolder() && fileManagerConfig.allowedActions.pickFiles);
+        };
+
+        return Item;
+    }]);
+})(angular);
 angular.module("FileManagerApp").run(["$templateCache", function($templateCache) {$templateCache.put("src/templates/current-folder-breadcrumb.html","<ol class=\"breadcrumb\">\n    <li>\n        <a href=\"\" ng-click=\"fileNavigator.goTo(-1)\">\n            SalesDrive\n        </a>\n    </li>\n    <li ng-repeat=\"(key, dir) in fileNavigator.currentPath track by key\" ng-class=\"{\'active\':$last}\" class=\"animated fast fadeIn\">\n        <a href=\"\" ng-show=\"!$last\" ng-click=\"fileNavigator.goTo(key)\">\n            {{dir | strLimit : 8}}\n        </a>\n        <span ng-show=\"$last\">\n            {{dir | strLimit : 12}}\n        </span>\n    </li>\n</ol>");
 $templateCache.put("src/templates/item-context-menu.html","<div id=\"context-menu\" class=\"dropdown clearfix animated fast fadeIn\">\n    <ul class=\"dropdown-menu dropdown-right-click\" role=\"menu\" aria-labelledby=\"dropdownMenu\" ng-show=\"temps.length\">\n\n        <li ng-show=\"singleSelection() && singleSelection().isFolder()\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"smartClick(singleSelection())\">\n                <i class=\"glyphicon glyphicon-folder-open\"></i> {{\'open\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.pickCallback && singleSelection() && singleSelection().isSelectable()\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"config.pickCallback(singleSelection().model)\">\n                <i class=\"glyphicon glyphicon-hand-up\"></i> {{\'select_this\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.download && !selectionHas(\'dir\') && singleSelection()\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"download()\">\n                <i class=\"glyphicon glyphicon-cloud-download\"></i> {{\'download\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.downloadMultiple && !selectionHas(\'dir\') && !singleSelection()\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"download()\">\n                <i class=\"glyphicon glyphicon-cloud-download\"></i> {{\'download_as_zip\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.preview && singleSelection().isImage() && singleSelection()\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"openImagePreview()\">\n                <i class=\"glyphicon glyphicon-picture\"></i> {{\'view_item\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.rename && singleSelection()\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modal(\'rename\')\">\n                <i class=\"glyphicon glyphicon-edit\"></i> {{\'rename\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.move\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modalWithPathSelector(\'move\')\">\n                <i class=\"glyphicon glyphicon-arrow-right\"></i> {{\'move\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.copy && !selectionHas(\'dir\')\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modalWithPathSelector(\'copy\')\">\n                <i class=\"glyphicon glyphicon-log-out\"></i> {{\'copy\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.edit && singleSelection() && singleSelection().isEditable()\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"openEditItem()\">\n                <i class=\"glyphicon glyphicon-pencil\"></i> {{\'edit\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.changePermissions\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modal(\'changepermissions\')\">\n                <i class=\"glyphicon glyphicon-lock\"></i> {{\'permissions\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.compress && (!singleSelection() || selectionHas(\'dir\'))\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modal(\'compress\')\">\n                <i class=\"glyphicon glyphicon-compressed\"></i> {{\'compress\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.extract && singleSelection() && singleSelection().isExtractable()\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modal(\'extract\')\">\n                <i class=\"glyphicon glyphicon-export\"></i> {{\'extract\' | translate}}\n            </a>\n        </li>\n\n        <li class=\"divider\" ng-show=\"config.allowedActions.remove\"></li>\n        \n        <li ng-show=\"config.allowedActions.remove\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modal(\'remove\')\">\n                <i class=\"glyphicon glyphicon-trash\"></i> {{\'remove\' | translate}}\n            </a>\n        </li>\n\n    </ul>\n\n    <ul class=\"dropdown-menu dropdown-right-click\" role=\"menu\" aria-labelledby=\"dropdownMenu\" ng-show=\"!temps.length\">\n        <li ng-show=\"config.allowedActions.createFolder\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modal(\'newfolder\') && prepareNewFolder()\">\n                <i class=\"glyphicon glyphicon-plus\"></i> {{\'new_folder\' | translate}}\n            </a>\n        </li>\n        <li ng-show=\"config.allowedActions.upload\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modal(\'uploadfile\')\">\n                <i class=\"glyphicon glyphicon-cloud-upload\"></i> {{\'upload_files\' | translate}}\n            </a>\n        </li>\n    </ul>\n</div>");
 $templateCache.put("src/templates/main-icons.html","<div class=\"iconset noselect\">\n    <div ng-show=\"showUploadBar\">\n        <p class=\"thumbnail\">Queue progress:</p>\n        <div class=\"progress\" style=\"margin-bottom:20px\">\n            <div class=\"progress-bar\" role=\"progressbar\" ng-style=\"{ \'width\': uploader.progress + \'%\' }\"\n                 style=\"width: 0%;background:#93c308\"></div>\n            {{uploader.progress + \'%\'}}\n        </div>\n    </div>\n    <div class=\"item-list clearfix\" ng-click=\"selectOrUnselect(null, $event)\" ng-right-click=\"selectOrUnselect(null, $event)\" prevent=\"true\">\n        <div class=\"col-120\" ng-repeat=\"item in $parent.fileList = (fileNavigator.fileList | filter: {model:{name: query}})\" ng-show=\"!fileNavigator.requesting && !fileNavigator.error\">\n            <a href=\"\" class=\"thumbnail text-center\" ng-click=\"selectOrUnselect(item, $event)\" ng-dblclick=\"smartClick(item)\" ng-right-click=\"selectOrUnselect(item, $event)\" title=\"{{item.model.name}} ({{item.model.size | humanReadableFileSize}})\" ng-class=\"{selected: isSelected(item)}\">\n                <div class=\"item-icon\">\n                    <i class=\"glyphicon glyphicon-folder-open\" ng-show=\"item.model.type === \'dir\'\"></i>\n                    <i class=\"glyphicon glyphicon-file\" data-ext=\"{{ item.model.name | fileExtension }}\" ng-show=\"item.model.type === \'file\'\" ng-class=\"{\'item-extension\': config.showExtensionIcons}\"></i>\n                </div>\n                {{item.model.name | strLimit : 11 }}\n            </a>\n        </div>\n    </div>\n\n    <div ng-show=\"fileNavigator.requesting\">\n        <div ng-include=\"config.tplPath + \'/spinner.html\'\"></div>\n    </div>\n\n    <div class=\"alert alert-warning\" ng-show=\"!fileNavigator.requesting && fileNavigator.fileList.length < 1 && !fileNavigator.error\">\n        {{\"no_files_in_folder\" | translate}}...\n    </div>\n    \n    <div class=\"alert alert-danger\" ng-show=\"!fileNavigator.requesting && fileNavigator.error\">\n        {{ fileNavigator.error }}\n    </div>\n</div>");
