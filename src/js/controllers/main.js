@@ -373,13 +373,7 @@
 
         uploader.onBeforeUploadItem = function (item) {
 
-            $scope.fileNavigator.currentPath.push(item.file.name);
-            item.file.name =  $scope.fileNavigator.currentPath.join('/');
-            var params = {name: item.file.name, size: item.file.size / 1024, path: $scope.fileNavigator.currentPath.join('/')};
-            //item.formData.push(params);
-            item.formData = [{name: item.file.name,size: item.file.size / 1024,path: $scope.fileNavigator.currentPath.join('/')}];
-
-
+            item.formData.push({name: item.file.name, size: item.file.size / 1024, path: $scope.fileNavigator.currentPath.join('/')});
             $scope.fileNavigator.waitRecord = 'uploading';
             timerDot = $interval(function() {
                 $scope.fileNavigator.waitRecord = $scope.fileNavigator.waitRecord +'.';
@@ -388,7 +382,6 @@
         };
 
         uploader.onCompleteItem = function (item, response) {
-            $scope.fileNavigator.currentPath.pop();
             $interval.cancel(timerDot);
             $scope.fileNavigator.waitRecord = '';
             if (response.status != 'ERROR') {
