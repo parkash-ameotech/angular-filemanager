@@ -335,9 +335,9 @@
         };
 
         $scope.uploadFiles = function() {
-            $scope.fileNavigator.refresh();
-            $scope.uploadFileList = [];
-            $scope.modal('uploadfile', true);
+            //$scope.fileNavigator.refresh();
+            //$scope.uploadFileList = [];
+            //$scope.modal('uploadfile', true);
             $scope.apiMiddleware.upload($scope.uploadFileList, $scope.fileNavigator.currentPath).then(function() {
                 $scope.fileNavigator.refresh();
                 $scope.uploadFileList = [];
