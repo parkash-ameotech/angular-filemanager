@@ -323,25 +323,16 @@
                         {{"files_will_uploaded_to" | translate}}
                         <b>/{{fileNavigator.currentPath.join('/')}}</b>
                     </label>
-                    <!--<label for="fileAttach" class="btn btn-default btn-block"> Select Files</label>
-                    <input id="fileAttach" type="file" nv-file-select uploader="uploader" filters="checkfilecsv"
-                           class="sr-only custom-file-input">-->
-
-
                     <div class="form-group col-md-8" style="padding-top:20px">
                         <label for="fileAttach" style="display:block">
                             <div class="input-group-btn text-center  lead-action-drop-zone" nv-file-drop="" uploader="uploader" for="emailAttach">
                                 <div nv-file-over="" uploader="uploader" over-class="another-file-over-class" class="">
                                     <i class="fa fa-cloud-upload fa-2x" aria-hidden="true"><span style="font-family:'Titillium-Bold', Arial, Helvetica, sans-serif;">Drag and drop files here</span></i>
-                                    <!--<span>Drop zone</span>-->
                                     <input id="fileAttach" type="file" nv-file-select uploader="uploader" filters="checkfilecsv"  class="sr-only custom-file-input">
                                 </div>
                             </div>
                         </label>
                     </div>
-
-
-
                     <div class="upload-list">
                         <ul class="list-group">
                             <li class="list-group-item" ng-repeat="(index, uploadFile) in $parent.uploadFileList">
