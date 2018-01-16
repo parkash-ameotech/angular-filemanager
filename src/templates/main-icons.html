@@ -1,16 +1,9 @@
 <div class="iconset noselect">
-    <div ng-show="showUploadBar">
-        <p class="thumbnail">Queue progress:</p>
-        <div class="progress" style="margin-bottom:20px">
-            <div class="progress-bar" role="progressbar" ng-style="{ 'width': uploader.progress + '%' }"
-                 style="width: 0%;background:#93c308"></div>
-            {{uploader.progress + '%'}}
-        </div>
-    </div>
     <div ng-show="apiMiddleware.apiHandler.inprocess">
         <em>{{"uploading" | translate}}... {{apiMiddleware.apiHandler.progress}}%</em>
         <div class="progress mb0">
-            <div class="progress-bar active" role="progressbar" aria-valuenow="{{apiMiddleware.apiHandler.progress}}" aria-valuemin="0" aria-valuemax="100" style="width: {{apiMiddleware.apiHandler.progress}}%"></div>
+            <div class="progress-bar active" role="progressbar" aria-valuenow="{{apiMiddleware.apiHandler.progress}}" aria-valuemin="0" aria-valuemax="100" style="width: {{apiMiddleware.apiHandler.progress}}%"
+                 style="background:#93c308"></div>
         </div>
     </div>
     <div class="item-list clearfix" ng-click="selectOrUnselect(null, $event)" ng-right-click="selectOrUnselect(null, $event)" prevent="true">
