@@ -129,7 +129,8 @@
             self.error = '';
 
             var data = {
-                destination: destination
+                destination: destination,
+                quantity:files.length
             };
 
             for (var i = 0; i < files.length; i++) {

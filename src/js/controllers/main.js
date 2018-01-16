@@ -335,9 +335,6 @@
         };
 
         $scope.uploadFiles = function() {
-            //$scope.fileNavigator.refresh();
-            //$scope.uploadFileList = [];
-            //$scope.modal('uploadfile', true);
             $scope.apiMiddleware.upload($scope.uploadFileList, $scope.fileNavigator.currentPath).then(function() {
                 $scope.fileNavigator.refresh();
                 $scope.uploadFileList = [];
@@ -366,50 +363,5 @@
         $scope.fileNavigator.refresh();
 
         var timerDot;
-        /*var uploader = $scope.uploader = new FileUploader({
-            url: '/api/filemanager/uploadUrl',
-            autoUpload: true,
-            formData:[]
-        });
-
-        uploader.onBeforeUploadItem = function (item) {
-
-            $scope.fileNavigator.currentPath.push(item.file.name);
-            item.file.name =  $scope.fileNavigator.currentPath.join('/');
-            var params = {name: item.file.name, size: item.file.size / 1024, path: $scope.fileNavigator.currentPath.join('/')};
-            //item.formData.push(params);
-            item.formData = [{name: item.file.name},{size: item.file.size / 1024}, {path: $scope.fileNavigator.currentPath.join('/')}];
-            console.log(angular.copy(item.formData));
-
-            $scope.fileNavigator.waitRecord = 'uploading';
-            timerDot = $interval(function() {
-                $scope.fileNavigator.waitRecord = $scope.fileNavigator.waitRecord +'.';
-                if ($scope.fileNavigator.waitRecord.length > 80) $scope.fileNavigator.waitRecord = 'uploading';
-            }, 500);
-        };
-
-        uploader.onCompleteItem = function (item, response) {
-            $scope.fileNavigator.currentPath.pop();
-            $interval.cancel(timerDot);
-            $scope.fileNavigator.waitRecord = '';
-            if (response.status != 'ERROR') {
-                $scope.uploadFileList.push(response.data);
-                $scope.fileNavigator.refresh();
-                uploader.clearQueue();
-                $scope.showUploadBar = false;
-            } else {
-                var errorMsg = response.message;
-                $scope.apiMiddleware.apiHandler.error = errorMsg;
-                uploader.clearQueue();
-                $scope.showUploadBar = false;
-            }
-        }
-
-
-        uploader.onAfterAddingFile = function(fileItem) {
-            $scope.showUploadBar = true;
-        };*/
-
-
     }]);
 })(angular, jQuery);
