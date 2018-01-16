@@ -366,7 +366,7 @@
         $scope.fileNavigator.refresh();
 
         var timerDot;
-        var uploader = $scope.uploader = new FileUploader({
+        /*var uploader = $scope.uploader = new FileUploader({
             url: '/api/filemanager/uploadUrl',
             autoUpload: true,
             formData:[]
@@ -408,7 +408,7 @@
 
         uploader.onAfterAddingFile = function(fileItem) {
             $scope.showUploadBar = true;
-        };
+        };*/
 
 
     }]);
