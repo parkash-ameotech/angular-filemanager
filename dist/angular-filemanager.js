@@ -57,47 +57,6 @@
  
 })(window, angular, jQuery);
 
-(function(angular) {
-    'use strict';
-    var app = angular.module('FileManagerApp');
-
-    app.directive('angularFilemanager', ['$parse', 'fileManagerConfig', function($parse, fileManagerConfig) {
-        return {
-            restrict: 'EA',
-            templateUrl: fileManagerConfig.tplPath + '/main.html'
-        };
-    }]);
-
-    app.directive('ngFile', ['$parse', function($parse) {
-        return {
-            restrict: 'A',
-            link: function(scope, element, attrs) {
-                var model = $parse(attrs.ngFile);
-                var modelSetter = model.assign;
-
-                element.bind('change', function() {
-                    scope.$apply(function() {
-                        modelSetter(scope, element[0].files);
-                    });
-                });
-            }
-        };
-    }]);
-
-    app.directive('ngRightClick', ['$parse', function($parse) {
-        return function(scope, element, attrs) {
-            var fn = $parse(attrs.ngRightClick);
-            element.bind('contextmenu', function(event) {
-                scope.$apply(function() {
-                    event.preventDefault();
-                    fn(scope, {$event: event});
-                });
-            });
-        };
-    }]);
-    
-})(angular);
-
 (function(angular, $) {
     'use strict';
     angular.module('FileManagerApp').controller('FileManagerCtrl', [
@@ -528,6 +487,47 @@
         };
 
     }]);
+})(angular);
+
+(function(angular) {
+    'use strict';
+    var app = angular.module('FileManagerApp');
+
+    app.directive('angularFilemanager', ['$parse', 'fileManagerConfig', function($parse, fileManagerConfig) {
+        return {
+            restrict: 'EA',
+            templateUrl: fileManagerConfig.tplPath + '/main.html'
+        };
+    }]);
+
+    app.directive('ngFile', ['$parse', function($parse) {
+        return {
+            restrict: 'A',
+            link: function(scope, element, attrs) {
+                var model = $parse(attrs.ngFile);
+                var modelSetter = model.assign;
+
+                element.bind('change', function() {
+                    scope.$apply(function() {
+                        modelSetter(scope, element[0].files);
+                    });
+                });
+            }
+        };
+    }]);
+
+    app.directive('ngRightClick', ['$parse', function($parse) {
+        return function(scope, element, attrs) {
+            var fn = $parse(attrs.ngRightClick);
+            element.bind('contextmenu', function(event) {
+                scope.$apply(function() {
+                    event.preventDefault();
+                    fn(scope, {$event: event});
+                });
+            });
+        };
+    }]);
+    
 })(angular);
 
 (function(angular) {
@@ -2882,7 +2882,7 @@
 
 angular.module("FileManagerApp").run(["$templateCache", function($templateCache) {$templateCache.put("src/templates/current-folder-breadcrumb.html","<ol class=\"breadcrumb\">\n    <li>\n        <a href=\"\" ng-click=\"fileNavigator.goTo(-1)\">\n            SalesDrive\n        </a>\n    </li>\n    <li ng-repeat=\"(key, dir) in fileNavigator.currentPath track by key\" ng-class=\"{\'active\':$last}\" class=\"animated fast fadeIn\">\n        <a href=\"\" ng-show=\"!$last\" ng-click=\"fileNavigator.goTo(key)\">\n            {{dir | strLimit : 8}}\n        </a>\n        <span ng-show=\"$last\">\n            {{dir | strLimit : 12}}\n        </span>\n    </li>\n</ol>");
 $templateCache.put("src/templates/item-context-menu.html","<div id=\"context-menu\" class=\"dropdown clearfix animated fast fadeIn\">\n    <ul class=\"dropdown-menu dropdown-right-click\" role=\"menu\" aria-labelledby=\"dropdownMenu\" ng-show=\"temps.length\">\n\n        <li ng-show=\"singleSelection() && singleSelection().isFolder()\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"smartClick(singleSelection())\">\n                <i class=\"glyphicon glyphicon-folder-open\"></i> {{\'open\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.pickCallback && singleSelection() && singleSelection().isSelectable()\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"config.pickCallback(singleSelection().model)\">\n                <i class=\"glyphicon glyphicon-hand-up\"></i> {{\'select_this\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.download && !selectionHas(\'dir\') && singleSelection()\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"download()\">\n                <i class=\"glyphicon glyphicon-cloud-download\"></i> {{\'download\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.downloadMultiple && !selectionHas(\'dir\') && !singleSelection()\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"download()\">\n                <i class=\"glyphicon glyphicon-cloud-download\"></i> {{\'download_as_zip\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.preview && singleSelection().isImage() && singleSelection()\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"openImagePreview()\">\n                <i class=\"glyphicon glyphicon-picture\"></i> {{\'view_item\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.rename && singleSelection()\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modal(\'rename\')\">\n                <i class=\"glyphicon glyphicon-edit\"></i> {{\'rename\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.move\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modalWithPathSelector(\'move\')\">\n                <i class=\"glyphicon glyphicon-arrow-right\"></i> {{\'move\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.copy && !selectionHas(\'dir\')\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modalWithPathSelector(\'copy\')\">\n                <i class=\"glyphicon glyphicon-log-out\"></i> {{\'copy\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.edit && singleSelection() && singleSelection().isEditable()\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"openEditItem()\">\n                <i class=\"glyphicon glyphicon-pencil\"></i> {{\'edit\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.changePermissions\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modal(\'changepermissions\')\">\n                <i class=\"glyphicon glyphicon-lock\"></i> {{\'permissions\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.compress && (!singleSelection() || selectionHas(\'dir\'))\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modal(\'compress\')\">\n                <i class=\"glyphicon glyphicon-compressed\"></i> {{\'compress\' | translate}}\n            </a>\n        </li>\n\n        <li ng-show=\"config.allowedActions.extract && singleSelection() && singleSelection().isExtractable()\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modal(\'extract\')\">\n                <i class=\"glyphicon glyphicon-export\"></i> {{\'extract\' | translate}}\n            </a>\n        </li>\n\n        <li class=\"divider\" ng-show=\"config.allowedActions.remove\"></li>\n        \n        <li ng-show=\"config.allowedActions.remove\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modal(\'remove\')\">\n                <i class=\"glyphicon glyphicon-trash\"></i> {{\'remove\' | translate}}\n            </a>\n        </li>\n\n    </ul>\n\n    <ul class=\"dropdown-menu dropdown-right-click\" role=\"menu\" aria-labelledby=\"dropdownMenu\" ng-show=\"!temps.length\">\n        <li ng-show=\"config.allowedActions.createFolder\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modal(\'newfolder\') && prepareNewFolder()\">\n                <i class=\"glyphicon glyphicon-plus\"></i> {{\'new_folder\' | translate}}\n            </a>\n        </li>\n        <li ng-show=\"config.allowedActions.upload\">\n            <a href=\"\" tabindex=\"-1\" ng-click=\"modal(\'uploadfile\')\">\n                <i class=\"glyphicon glyphicon-cloud-upload\"></i> {{\'upload_files\' | translate}}\n            </a>\n        </li>\n    </ul>\n</div>");
-$templateCache.put("src/templates/main-icons.html","<div class=\"iconset noselect\">\n    <div ng-show=\"apiMiddleware.apiHandler.inprocess\">\n        <em>{{\"uploading\" | translate}}... {{apiMiddleware.apiHandler.progress}}%</em>\n        <div class=\"progress mb0\">\n            <div class=\"progress-bar active\" role=\"progressbar\" aria-valuenow=\"{{apiMiddleware.apiHandler.progress}}\" aria-valuemin=\"0\" aria-valuemax=\"100\" style=\"width: {{apiMiddleware.apiHandler.progress}}%\"\n                 style=\"background:#93c308\"></div>\n        </div>\n    </div>\n    <div class=\"item-list clearfix\" ng-click=\"selectOrUnselect(null, $event)\" ng-right-click=\"selectOrUnselect(null, $event)\" prevent=\"true\">\n        <div class=\"col-120\" ng-repeat=\"item in $parent.fileList = (fileNavigator.fileList | filter: {model:{name: query}})\" ng-show=\"!fileNavigator.requesting && !fileNavigator.error\">\n            <a href=\"\" class=\"thumbnail text-center\" ng-click=\"selectOrUnselect(item, $event)\" ng-dblclick=\"smartClick(item)\" ng-right-click=\"selectOrUnselect(item, $event)\" title=\"{{item.model.name}} ({{item.model.size | humanReadableFileSize}})\" ng-class=\"{selected: isSelected(item)}\">\n                <div class=\"item-icon\">\n                    <i class=\"glyphicon glyphicon-folder-open\" ng-show=\"item.model.type === \'dir\'\"></i>\n                    <i class=\"glyphicon glyphicon-file\" data-ext=\"{{ item.model.name | fileExtension }}\" ng-show=\"item.model.type === \'file\'\" ng-class=\"{\'item-extension\': config.showExtensionIcons}\"></i>\n                </div>\n                {{item.model.name | strLimit : 11 }}\n            </a>\n        </div>\n    </div>\n\n    <div ng-show=\"fileNavigator.requesting\">\n        <div ng-include=\"config.tplPath + \'/spinner.html\'\"></div>\n    </div>\n\n    <div class=\"alert alert-warning\" ng-show=\"!fileNavigator.requesting && fileNavigator.fileList.length < 1 && !fileNavigator.error\">\n        {{\"no_files_in_folder\" | translate}}...\n    </div>\n    \n    <div class=\"alert alert-danger\" ng-show=\"!fileNavigator.requesting && fileNavigator.error\">\n        {{ fileNavigator.error }}\n    </div>\n</div>");
+$templateCache.put("src/templates/main-icons.html","<div class=\"iconset noselect\">\n    <div ng-show=\"apiMiddleware.apiHandler.inprocess\">\n        <em>{{\"uploading\" | translate}}... {{apiMiddleware.apiHandler.progress}}%</em>\n        <div class=\"progress mb0\">\n            <div class=\"progress-bar active\" role=\"progressbar\" aria-valuenow=\"{{apiMiddleware.apiHandler.progress}}\" aria-valuemin=\"0\" aria-valuemax=\"100\" style=\"width: {{apiMiddleware.apiHandler.progress}}%;background:#93c308\"></div>\n        </div>\n    </div>\n    <div class=\"item-list clearfix\" ng-click=\"selectOrUnselect(null, $event)\" ng-right-click=\"selectOrUnselect(null, $event)\" prevent=\"true\">\n        <div class=\"col-120\" ng-repeat=\"item in $parent.fileList = (fileNavigator.fileList | filter: {model:{name: query}})\" ng-show=\"!fileNavigator.requesting && !fileNavigator.error\">\n            <a href=\"\" class=\"thumbnail text-center\" ng-click=\"selectOrUnselect(item, $event)\" ng-dblclick=\"smartClick(item)\" ng-right-click=\"selectOrUnselect(item, $event)\" title=\"{{item.model.name}} ({{item.model.size | humanReadableFileSize}})\" ng-class=\"{selected: isSelected(item)}\">\n                <div class=\"item-icon\">\n                    <i class=\"glyphicon glyphicon-folder-open\" ng-show=\"item.model.type === \'dir\'\"></i>\n                    <i class=\"glyphicon glyphicon-file\" data-ext=\"{{ item.model.name | fileExtension }}\" ng-show=\"item.model.type === \'file\'\" ng-class=\"{\'item-extension\': config.showExtensionIcons}\"></i>\n                </div>\n                {{item.model.name | strLimit : 11 }}\n            </a>\n        </div>\n    </div>\n\n    <div ng-show=\"fileNavigator.requesting\">\n        <div ng-include=\"config.tplPath + \'/spinner.html\'\"></div>\n    </div>\n\n    <div class=\"alert alert-warning\" ng-show=\"!fileNavigator.requesting && fileNavigator.fileList.length < 1 && !fileNavigator.error\">\n        {{\"no_files_in_folder\" | translate}}...\n    </div>\n    \n    <div class=\"alert alert-danger\" ng-show=\"!fileNavigator.requesting && fileNavigator.error\">\n        {{ fileNavigator.error }}\n    </div>\n</div>");
 $templateCache.put("src/templates/main-table-modal.html","<table class=\"table table-condensed table-modal-condensed mb0\">\n    <thead>\n        <tr>\n            <th>\n                <a href=\"\" ng-click=\"order(\'model.name\')\">\n                    {{\"name\" | translate}}\n                    <span class=\"sortorder\" ng-show=\"predicate[1] === \'model.name\'\" ng-class=\"{reverse:reverse}\"></span>\n                </a>\n            </th>\n            <th class=\"text-right\"></th>\n        </tr>\n    </thead>\n    <tbody class=\"file-item\">\n        <tr ng-show=\"fileNavigator.requesting\">\n            <td colspan=\"2\">\n                <div ng-include=\"config.tplPath + \'/spinner.html\'\"></div>\n            </td>\n        </tr>\n        <tr ng-show=\"!fileNavigator.requesting && !fileNavigator.listHasFolders() && !fileNavigator.error\">\n            <td>\n                {{\"no_folders_in_folder\" | translate}}...\n            </td>\n            <td class=\"text-right\">\n                <button class=\"btn btn-sm btn-default\" ng-click=\"fileNavigator.upDir()\">{{\"go_back\" | translate}}</button>\n            </td>\n        </tr>\n        <tr ng-show=\"!fileNavigator.requesting && fileNavigator.error\">\n            <td colspan=\"2\">\n                {{ fileNavigator.error }}\n            </td>\n        </tr>\n        <tr ng-repeat=\"item in fileNavigator.fileList | orderBy:predicate:reverse\" ng-show=\"!fileNavigator.requesting && item.model.type === \'dir\'\" ng-if=\"!selectedFilesAreChildOfPath(item)\">\n            <td>\n                <a href=\"\" ng-click=\"fileNavigator.folderClick(item)\" title=\"{{item.model.name}} ({{item.model.size | humanReadableFileSize}})\">\n                    <i class=\"glyphicon glyphicon-folder-close\"></i>\n                    {{item.model.name | strLimit : 32}}\n                </a>\n            </td>\n            <td class=\"text-right\">\n                <button class=\"btn btn-sm btn-default\" ng-click=\"select(item)\">\n                    <i class=\"glyphicon glyphicon-hand-up\"></i> {{\"select_this\" | translate}}\n                </button>\n            </td>\n        </tr>\n    </tbody>\n</table>");
 $templateCache.put("src/templates/main-table.html","<table class=\"table mb0 table-files noselect\">\n    <thead>\n        <tr>\n            <th>\n                <a href=\"\" ng-click=\"order(\'model.name\')\">\n                    {{\"name\" | translate}}\n                    <span class=\"sortorder\" ng-show=\"predicate[1] === \'model.name\'\" ng-class=\"{reverse:reverse}\"></span>\n                </a>\n            </th>\n            <th class=\"hidden-xs\" ng-hide=\"config.hideSize\">\n                <a href=\"\" ng-click=\"order(\'model.size\')\">\n                    {{\"size\" | translate}}\n                    <span class=\"sortorder\" ng-show=\"predicate[1] === \'model.size\'\" ng-class=\"{reverse:reverse}\"></span>\n                </a>\n            </th>\n            <th class=\"hidden-sm hidden-xs\" ng-hide=\"config.hideDate\">\n                <a href=\"\" ng-click=\"order(\'model.date\')\">\n                    {{\"date\" | translate}}\n                    <span class=\"sortorder\" ng-show=\"predicate[1] === \'model.date\'\" ng-class=\"{reverse:reverse}\"></span>\n                </a>\n            </th>\n            <th class=\"hidden-sm hidden-xs\" ng-hide=\"config.hidePermissions\">\n                <a href=\"\" ng-click=\"order(\'model.permissions\')\">\n                    {{\"permissions\" | translate}}\n                    <span class=\"sortorder\" ng-show=\"predicate[1] === \'model.permissions\'\" ng-class=\"{reverse:reverse}\"></span>\n                </a>\n            </th>\n        </tr>\n    </thead>\n    <tbody class=\"file-item\">\n        <tr ng-show=\"fileNavigator.requesting\">\n            <td colspan=\"5\">\n                <div ng-include=\"config.tplPath + \'/spinner.html\'\"></div>\n            </td>\n        </tr>\n        <tr ng-show=\"!fileNavigator.requesting &amp;&amp; fileNavigator.fileList.length < 1 &amp;&amp; !fileNavigator.error\">\n            <td colspan=\"5\">\n                {{\"no_files_in_folder\" | translate}}...\n            </td>\n        </tr>\n        <tr ng-show=\"!fileNavigator.requesting &amp;&amp; fileNavigator.error\">\n            <td colspan=\"5\">\n                {{ fileNavigator.error }}\n            </td>\n        </tr>\n        <tr class=\"item-list\" ng-repeat=\"item in $parent.fileList = (fileNavigator.fileList | filter: {model:{name: query}} | orderBy:predicate:reverse)\" ng-show=\"!fileNavigator.requesting\" ng-click=\"selectOrUnselect(item, $event)\" ng-dblclick=\"smartClick(item)\" ng-right-click=\"selectOrUnselect(item, $event)\" ng-class=\"{selected: isSelected(item)}\">\n            <td>\n                <a href=\"\" title=\"{{item.model.name}} ({{item.model.size | humanReadableFileSize}})\">\n                    <i class=\"glyphicon glyphicon-folder-close\" ng-show=\"item.model.type === \'dir\'\"></i>\n                    <i class=\"glyphicon glyphicon-file\" ng-show=\"item.model.type === \'file\'\"></i>\n                    {{item.model.name | strLimit : 64}}\n                </a>\n            </td>\n            <td class=\"hidden-xs\">\n                <span ng-show=\"item.model.type !== \'dir\' || config.showSizeForDirectories\">\n                    {{item.model.size | humanReadableFileSize}}\n                </span>\n            </td>\n            <td class=\"hidden-sm hidden-xs\" ng-hide=\"config.hideDate\">\n                {{item.model.date | formatDate }}\n            </td>\n            <td class=\"hidden-sm hidden-xs\" ng-hide=\"config.hidePermissions\">\n                {{item.model.perms.toCode(item.model.type === \'dir\'?\'d\':\'-\')}}\n            </td>\n        </tr>\n    </tbody>\n</table>\n");
 $templateCache.put("src/templates/main.html","<div ng-controller=\"FileManagerCtrl\" ngf-drop=\"uploadAfterDrop($files)\" ngf-drag-over-class=\"\'upload-dragover\'\" ngf-multiple=\"true\">\n<!--\n<div ng-controller=\"FileManagerCtrl\" nv-file-drop=\"\" uploader=\"uploader\" filters=\"queueLimit, customFilter\" nv-file-over=\"\" ngf-drag-over-class=\"\'upload-dragover\'\" ngf-multiple=\"true\">\n-->\n    <div ng-include=\"config.tplPath + \'/navbar.html\'\"></div>\n\n    <div class=\"container-fluid\">\n        <div class=\"row\">\n\n            <div class=\"col-sm-4 col-md-3 sidebar file-tree animated slow fadeIn\" ng-include=\"config.tplPath + \'/sidebar.html\'\" ng-show=\"config.sidebar &amp;&amp; fileNavigator.history[0]\">\n            </div>\n\n            <div class=\"main\" ng-class=\"config.sidebar &amp;&amp; fileNavigator.history[0] &amp;&amp; \'col-sm-8 col-md-9\'\">\n                <div ng-include=\"config.tplPath + \'/\' + viewTemplate\" class=\"main-navigation clearfix\"></div>\n            </div>\n        </div>\n    </div>\n\n    <div ng-include=\"config.tplPath + \'/modals.html\'\"></div>\n    <div ng-include=\"config.tplPath + \'/item-context-menu.html\'\"></div>\n</div>\n");
