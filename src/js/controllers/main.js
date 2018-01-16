@@ -328,6 +328,11 @@
             $scope.modal('uploadfile');
         };
 
+        $scope.uploadAfterDrop = function ($files) {
+            $scope.uploadFileList = $scope.uploadFileList.concat($files);
+            $scope.uploadFiles();
+        };
+
         $scope.removeFromUpload = function(index) {
             $scope.apiMiddleware.removeFromUploadForm($scope.uploadFileList[index]).then(function() {
                 $scope.uploadFileList.splice(index, 1);
