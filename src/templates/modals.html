@@ -323,11 +323,7 @@
                         {{"files_will_uploaded_to" | translate}}
                         <b>/{{fileNavigator.currentPath.join('/')}}</b>
                     </label>
-                    <button class="btn btn-default btn-block" ngf-select="$parent.addForUpload($files)" ngf-multiple="true">
-                        {{"select_files" | translate}}
-                    </button>
-
-                    <div class="form-group col-md-12" style="padding-top:20px;padding-bottom: 20px">
+                    <div>
                         <div class="input-group-btn text-center  lead-action-drop-zone"
                              ngf-drop="$parent.addForUpload($files)"
                              ngf-select="$parent.addForUpload($files)"
@@ -358,8 +354,8 @@
                 </div>
                 <div class="modal-footer">
                     <div>
-                        <button type="button" class="btn btn-default crm-orange" data-dismiss="modal">{{"cancel" | translate}}</button>
-                        <button type="submit" class="btn btn-primary crm-green" ng-disabled="!$parent.uploadFileList.length || apiMiddleware.apiHandler.inprocess">{{'upload' | translate}}</button>
+                        <button type="button" class="btn crm-orange" data-dismiss="modal">{{"cancel" | translate}}</button>
+                        <button type="submit" class="btn crm-green" ng-disabled="!$parent.uploadFileList.length || apiMiddleware.apiHandler.inprocess">{{'upload' | translate}}</button>
                     </div>
                 </div>
             </form>
