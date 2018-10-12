@@ -200,6 +200,10 @@
                 return $scope.apiMiddleware.download(item, true);
             }
 
+            if (item.isImage() == false && item.isFolder() == false ) {
+                return $scope.apiMiddleware.download(item);
+            }
+
             if (item.isEditable()) {
                 //return $scope.openEditItem(item);
             }
