@@ -193,14 +193,7 @@
                 }
             }
 
-            if (item.isImage()) {
-                if ($scope.config.previewImagesInModal) {
-                    return $scope.openImagePreview(item);
-                } 
-                return $scope.apiMiddleware.download(item, true);
-            }
-
-            if (item.isImage() == false && item.isFolder() == false ) {
+            if (item.isFolder() == false ) {
                 return $scope.apiMiddleware.download(item);
             }
 
