@@ -120,10 +120,22 @@
         };
 
         FileNavigator.prototype.folderClick = function(item) {
+            var prevPath = this.currentPath;
+
             this.currentPath = [];
+
             if (item && item.isFolder()) {
                 this.currentPath = item.model.fullPath().split('/').splice(1);
             }
+
+            if (prevPath.length==this.currentPath.length && prevPath.filter(i1 => !this.currentPath.some(i2 => i1 === i2)).length == 0) {
+                if(prevPath.length > 1) {
+                    this.currentPath = this.currentPath.slice(0, -1);
+                } else {
+                    this.currentPath = [];
+                }
+            }
+
             this.refresh();
         };
 
