@@ -15,6 +15,6 @@
         {{ (item.name.split('/').pop() || fileNavigator.getBasePath().join('/') || '/') | strLimit : 30 }}
     </a>
     <ul class="nav nav-sidebar">
-        <li ng-repeat="item in item.nodes" ng-include="'folder-branch-item'" ng-class="{'active': item.name == fileNavigator.currentPath.join('/')}"></li>
+        <li ng-repeat="item in item.nodes" ng-include="'folder-branch-item'" ng-class="{'active': item.name == fileNavigator.currentPath.join('/'), 'hidden': isNotInPath(item.name)}"></li>
     </ul>
 </script>

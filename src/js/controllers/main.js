@@ -182,6 +182,27 @@
             return currentPath.indexOf(path + '/') !== -1;
         };
 
+        $scope.isNotInPath = function(path) {
+            var currentPath = $scope.fileNavigator.currentPath.join('/') + '/';
+
+            var pathDiff = [];
+            $scope.fileNavigator.history[0].nodes.forEach(element => {
+              if (path == element.name) {
+                  pathDiff.push(element.name);
+              }
+            });
+
+            if ($scope.fileNavigator.currentPath[0] && path.split('/')[0] == $scope.fileNavigator.currentPath[0]) {
+                pathDiff.push(path.split('/')[0])
+            }
+
+            if (pathDiff.length > 0 || currentPath.indexOf(path + '/') !== -1) {
+                return false
+            } else {
+                return true
+            }
+        };
+
         $scope.edit = function() {
             $scope.apiMiddleware.edit($scope.singleSelection()).then(function() {
                 $scope.modal('edit', true);
